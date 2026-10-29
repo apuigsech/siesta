@@ -1,0 +1,16 @@
+{
+  "name": "siesta",
+  "version": "0.1.0",
+  "description": "You nap. They ship. Long, autonomous agent work: define in depth, let agents deliver, decide at checkpoints.",
+  "author": {
+    "name": "Albert Puigsech Galicia"
+  },
+  "homepage": "https://github.com/apuigsech/siesta",
+  "repository": "https://github.com/apuigsech/siesta",
+  "keywords": [
+    "agents",
+    "autonomy",
+    "orchestration",
+    "skills"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "siesta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "You nap. They ship. Long, autonomous agent work: define in depth, let agents deliver, decide at checkpoints.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apuigsech/siesta.git"
+  },
+  "keywords": [
+    "pi-package",
+    "agents",
+    "skills"
+  ],
+  "pi": {
+    "skills": [
+      "skills"
+    ]
+  }
+}
