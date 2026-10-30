@@ -1,0 +1,98 @@
+# Siesta's defaults: every configuration key, its default and its meaning.
+# A repository's .siesta/config.yaml holds only what differs from these.
+# How the layers combine: references/config.md in the siesta skill.
+
+version: 1
+extends: null                     # a preset's name; none ship yet
+
+project:
+  name: null                      # null: the repository's name from its origin remote, or its folder's name
+  language:
+    docs: en                      # documents the agents write
+    human: auto                   # checkpoints and meetings; auto: the language the human writes in
+
+roles:                            # harness, model and effort per role; current: as the session doing the starting; default: the harness's default
+  define:    { harness: current, model: current, effort: current }
+  pm:        { harness: current, model: current, effort: current }
+  worker:    { harness: current, model: current, effort: current }
+  spike:     { harness: current, model: current, effort: current }
+  reviewer:  { harness: current, model: current, effort: current }
+  rechecker: { harness: current, model: current, effort: current }
+
+paths:
+  product: docs/purpose.md
+  architecture: docs/architecture.md
+  glossary: docs/glossary.md
+  feature: docs/features/{feature}.md
+  feature_design: docs/features/{feature}-design.md
+  module: modules/{module}/README.md
+  open_questions: docs/open-questions.md
+  decisions: docs/decisions.md    # one file; a folder ending in / holds one file per decision
+  roadmaps: .siesta/roadmaps/
+  epics: .siesta/epics/           # one folder per epic
+  checkpoint: .siesta/checkpoint.md   # never committed
+  perspectives: .siesta/perspectives/ # the repository's own review perspectives
+  templates: .siesta/templates/       # the repository's replacements for Siesta's templates
+  worktrees: ~/.local/state/siesta/{repo}/worktrees/  # one worktree per epic, named after its slug; outside the checkout
+  notes: ~/.local/state/siesta/{repo}/notes/  # briefs, reports and reviews; outside every worktree
+
+naming:
+  roadmap_id: "{date}-{slug}"
+  epic_id: "{date}-{slug}"
+  decision_id: "D-{n:03}"
+  open_question_id: "OQ-{n:02}"
+  branch: "{type}/{slug}"
+  session_title: "{title}"
+  commits: conventional           # conventional | free
+  pr_reference: null              # such as "Refs #{issue}"; null: none
+
+git:
+  integration_branch: null        # null: the remote's default branch
+  signed_commits: as-repo         # required | as-repo (follow the repository's git configuration)
+  merge:
+    by: human                     # human | pm
+    method: squash                # squash | merge | rebase
+
+autonomy:                         # only the human decides this section
+  waits_for_human: [decision, phase-acceptance, scope-change, merge-without-panel, infra-apply, new-cost, delete, security]
+  never: [push-integration-branch, force-push]
+  standing_approvals: []          # entries: { id, allows, granted, said }
+
+execution:
+  max_parallel_epics: 2
+  parallel_when: disjoint-files   # disjoint-files | always
+  before_pr: []                   # commands each worker runs before opening its pull request
+  mutation_check: true            # before its pull request, each worker breaks its own code on purpose to check that the tests catch it
+  after_merge:
+    deploys: null                 # what a merge deploys, such as an environment's address
+    on_broken_deploy: revert-and-checkpoint   # revert-and-checkpoint | checkpoint
+
+review:
+  plan:
+    reviewers: 5
+    perspectives: [security, performance, usability, cost, operability, data]
+    max_rounds: 5                 # past this, a checkpoint
+  pull_request:
+    reviewers: 5
+    perspectives: [correctness, security, performance, operability, tests]
+    blocking: [critical, high]    # severities that block a merge
+    max_rounds: 5                 # past this, a checkpoint
+    recheck: true                 # an independent re-checker confirms each fix
+    mutation_check: true          # each fix brings a test that fails without it
+
+interview:
+  questions: rounds               # rounds: the whole frontier at once | one-at-a-time
+
+checkpoints:
+  publish: [file]                 # where a checkpoint goes; add-ons add places
+  status_first: true              # the checkpoint, and the message that it is open, begin with a status
+
+status:
+  progress: criteria              # tasks | criteria | mixed
+  meetings: on-demand             # on-demand, or times such as ["09:00", "14:00"]
+
+sessions:
+  launcher: harness               # how a worker's session opens: harness (the harness's own way) | command | human
+  command: null                   # with launcher: command; placeholders {harness} {model} {effort} {dir} {title} {prompt}
+
+addons: {}                        # each key names an add-on, whose skill is siesta-<key>; its keys are its own

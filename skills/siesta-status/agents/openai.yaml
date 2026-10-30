@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: status"
+  short_description: "How the roadmap stands, every number counted"
+  default_prompt: "Use $siesta-status to tell me how the roadmap stands."
+
+policy:
+  allow_implicit_invocation: true

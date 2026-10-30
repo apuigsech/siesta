@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: interview"
+  short_description: "Be interviewed until every decision is made"
+  default_prompt: "Use $siesta-interview to interview me about this idea."
+
+policy:
+  allow_implicit_invocation: true

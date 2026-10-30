@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: run roadmap"
+  short_description: "Run a roadmap as its project manager"
+  default_prompt: "Use $siesta-run-roadmap to run the roadmap."
+
+policy:
+  allow_implicit_invocation: true

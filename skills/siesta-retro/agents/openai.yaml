@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: retro"
+  short_description: "Look back on a roadmap and change what repeated"
+  default_prompt: "Use $siesta-retro to look back on this roadmap."
+
+policy:
+  allow_implicit_invocation: true

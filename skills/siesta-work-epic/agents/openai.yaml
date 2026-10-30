@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: work epic"
+  short_description: "Deliver one epic as its worker"
+
+policy:
+  # Only agents use it. Codex has no way to keep it out of `$`, as Claude Code's user-invocable: false does.
+  allow_implicit_invocation: true

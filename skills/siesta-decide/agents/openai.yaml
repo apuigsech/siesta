@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: decide"
+  short_description: "Record a decision or an open question"
+  default_prompt: "Use $siesta-decide to record this as a decision."
+
+policy:
+  allow_implicit_invocation: true

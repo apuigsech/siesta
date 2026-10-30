@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: define"
+  short_description: "Write the product, architecture or glossary"
+  default_prompt: "Use $siesta-define to define the product with me."
+
+policy:
+  allow_implicit_invocation: true

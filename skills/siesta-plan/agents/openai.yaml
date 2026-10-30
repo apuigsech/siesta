@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: plan"
+  short_description: "Write or change a roadmap of phases and epics"
+  default_prompt: "Use $siesta-plan to write the roadmap."
+
+policy:
+  allow_implicit_invocation: true
