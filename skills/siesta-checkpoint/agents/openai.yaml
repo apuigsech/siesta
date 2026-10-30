@@ -1,0 +1,8 @@
+# Codex's interface and invocation policy for this skill.
+interface:
+  display_name: "Siesta: checkpoint"
+  short_description: "See and answer what waits for you"
+  default_prompt: "Use $siesta-checkpoint to show me what waits for me."
+
+policy:
+  allow_implicit_invocation: true

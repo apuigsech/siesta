@@ -1,0 +1,25 @@
+# Checks, on every pull request, that GitHub mirrors the Siesta plan on the integration branch.
+# Written by siesta-setup from the siesta-sync-github skill.
+name: Siesta sync
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  check:
+    name: GitHub mirrors the plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .siesta/addons/sync-github.mjs check
+        env:
+          GH_TOKEN: ${{ github.token }}
