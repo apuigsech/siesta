@@ -30,7 +30,7 @@ Siesta works in three phases.
    - It starts one worker per epic, each in a session, a branch and a worktree of its own.
    - Each worker builds its epic up to a pull request.
    - A panel of independent reviewers goes over each pull request in rounds, and a re-checker
-     confirms each fix.
+     confirms the fixes that answer a blocking finding or change code.
    - The project manager merges when nothing blocks, as far as the configuration allows.
 3. **Decide.** What only you can decide waits for you in the checkpoint, each item ready to answer
    in a line: a decision, an approval, a hypothesis the agents took meanwhile. Work that does not
@@ -43,9 +43,10 @@ Siesta works in three phases.
 | Project manager | Runs the roadmap: starts workers, leads reviews, merges, keeps the checkpoint |
 | Worker | Delivers one epic, or a spike's verdict, up to a pull request |
 | Reviewer | Reviews a plan or a pull request from one perspective, changing nothing |
-| Re-checker | Checks, read-only, that each fix of a review round holds |
+| Re-checker | Checks, read-only, that the fixes of a review round hold |
 
-Each role can run on its own harness, model and effort.
+Each role can run on its own harness, model and effort. The project manager's effort can differ by
+activity, and a reviewer's by stage of the review.
 
 ## Install
 
@@ -89,7 +90,7 @@ on their own: the skills load each other, and a worker starts from a brief that 
 | `siesta-define` | Writes or revises a document later work follows: the product, the architecture, the glossary, a feature, a module's charter | "Let's define the product" |
 | `siesta-decide` | Records decisions and open questions in one shape, numbered across every open branch, each with who accepted it and their words | "Note that as a decision" |
 | `siesta-plan` | Writes the roadmap: phases with completion criteria, epics with acceptance criteria, spikes for the doubts | "Write the roadmap" |
-| `siesta-review` | Reviews a plan or a pull request in rounds: an independent panel, the author's answer to each finding, a re-check of each fix | "Review the plan" |
+| `siesta-review` | Reviews a plan or a pull request in rounds: an independent panel sized by what the change touches, the author's answer to each finding, a re-check of its fixes | "Review the plan" |
 | **Delegate** | | |
 | `siesta-run-roadmap` | The project manager's loop, from starting epics to closing phases and the roadmap | "Run the roadmap" |
 | `siesta-launch-worker` | Starts an epic's worker in a session of its own, with its worktree, branch and brief | (the project manager uses it) |
@@ -288,17 +289,33 @@ cannot change what the agents may do.
 
 | Section | Sets |
 |---|---|
-| `roles` | Harness, model and effort for each role |
+| `roles` | Harness, model and effort for each role; the effort may differ by activity or by stage of a review |
 | `paths` | Where each document, the plan, the checkpoint, the notes and the worktrees live |
 | `naming` | Ids, branches, session titles, commit style |
 | `git` | The integration branch, signing, who merges and how |
 | `autonomy` | What waits for you, what never happens, and your standing approvals |
 | `execution` | How many epics run at once, what runs before a pull request, what a merge deploys |
-| `review` | The panels for plans and for pull requests: how many reviewers, which perspectives, what blocks |
+| `review` | The panels for plans and for pull requests: how many reviewers, which perspectives, what blocks, which fixes are re-checked |
 | `interview` | Questions in rounds, or one at a time |
 | `checkpoints`, `status` | Where the checkpoint is published, whether it opens with a status, when you meet |
 | `sessions` | How workers' sessions open |
 | `addons` | Connections to other services, such as `sync-github` |
+
+### What a review costs
+
+Reviews take a large share of a roadmap's tokens. These keys size them to what each change needs:
+
+| Key | Sets |
+|---|---|
+| `review.pull_request.reviewers` | A number, or one for each class of change, such as `{ default: 2, security: 3, docs-only: 1 }` |
+| `review.pull_request.recheck`, `review.plan.recheck` | Which fixes an independent re-checker confirms: `all`, `code` (the default), `blocking` or `off`. The lead checks the others from the diff |
+| `review.pull_request.mutation_check` | Which re-checked fixes are undone to see their test fail: `all`, `blocking` (the default) or `off` |
+| `roles.reviewer.effort`, `roles.rechecker.effort` | One effort, or `{ rounds, closing }`: the rounds at a lower effort, and one closing pass at a higher one before the review ends |
+| `roles.pm.effort` | One effort, or `{ default, plan, review }`: coordination at one effort, planning and leading reviews at another |
+
+Each round's file records what its reviewers cost and who found each finding. `siesta-retro` counts
+them by effort, so the next roadmap is tuned from figures. The wording of a pull request's body
+opens no round: the project manager says it right in the merge message.
 
 ## Where things live
 

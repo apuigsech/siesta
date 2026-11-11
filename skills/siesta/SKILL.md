@@ -21,9 +21,11 @@ Siesta lets agents take a project from a defined roadmap to merged work over lon
 | Worker | `worker` | Delivers one epic in its own branch and worktree, up to a pull request |
 | Spike worker | `spike` | Delivers a spike: a verdict that becomes a decision |
 | Reviewer | `reviewer` | Reviews a plan or a pull request from one perspective |
-| Re-checker | `rechecker` | Checks, read-only, that each fix of a review round holds |
+| Re-checker | `rechecker` | Checks, read-only, that the fixes of a review round hold |
 
 When you start a session or a subagent for a role, give it the harness, model and effort the configuration assigns to that role. `current` means the same as the session doing the starting. If the harness cannot honor a setting, say so and use the closest one it has.
+
+A role's effort is one value, or one for each part of its work: by activity for the project manager, and by stage of a review for the reviewer and the re-checker. The configuration reference says how to read each.
 
 ## The configuration
 

@@ -12,14 +12,16 @@ argument-hint: "[roadmap id]"
 
 ## The log
 
-The project manager's memory is `paths.notes/pm-<roadmap id>.md`, in the shape of [assets/log.md](assets/log.md):
-- the goal;
-- the workers: each one's epic, session, worktree, branch, brief, pull request and stage;
-- the project manager's own choices, with their reasons;
-- the human's corrections, in their words;
-- what comes next.
+The project manager's memory is its log: two files in `paths.notes`. What is read at every turn stays short, and what is only looked up is kept apart.
 
-Read it when the session starts, after every compaction and at each turn of the loop. Update it whenever any of that changes. A new session picks up from it.
+| File | Holds | Read |
+|---|---|---|
+| The state, `pm-<roadmap id>.md`, in the shape of [assets/log.md](assets/log.md) | Where things stand now: the goal; each worker's epic, session, worktree, branch, brief, pull request and stage; the queue for what the workers share, such as a credential slot; what waits for whom; the corrections and choices still in force; what comes next | When the session starts, after every compaction and at each turn of the loop |
+| The history, `pm-<roadmap id>-history.md`, in the shape of [assets/history.md](assets/history.md) | What happened, one dated entry each: the project manager's choices with their reasons, the human's corrections in their words, each merge, and what left the state | Only to find a past entry, by searching it |
+
+- **Rewrite the state in place** whenever any of it changes, and keep it to about 150 lines at most. A merged epic's row leaves it, and a detail stays in the file the state points to.
+- **Append to the history, and never rewrite it.** A correction goes there with the human's words and, while it still binds the work, stays in the state in one line.
+- **After a compaction, read the state, not the history.** A new session picks up from the state.
 
 ## The goal
 
@@ -32,7 +34,7 @@ The second half lets the session stop while it waits for the human.
 ## The loop
 
 1. **Read the state.** Fetch `origin`, then read:
-   - the log;
+   - the log's state;
    - the roadmap and the specs on the integration branch;
    - the workers' reports, and their pull requests and checks;
    - the checkpoint.
@@ -59,6 +61,21 @@ The second half lets the session stop while it waits for the human.
 7. **Meet the human** with `siesta-status`, at the times in `status.meetings` or when they ask.
 8. **Wait, or go on.** When nothing can move until a worker or the human answers, wait for their messages. Look again no more often than the work can change. Then go back to step 1.
 
+## Effort
+
+`roles.pm.effort` is one effort, or one for each activity: `default`, `plan` and `review`. With one, every turn runs at it. With several:
+
+- **Your own turns run at `default`:** relaying a message, handing over what the workers share, checking a merge's conditions, writing the log.
+- **Changing the plan runs at `plan`:** drafting what `siesta-plan` adds, changes or cancels.
+- **Leading a review round runs at `review`:** gathering what the change must satisfy, checking the panel's findings, deciding the disputes.
+
+Reach an activity's effort in one of two ways:
+
+- **Where the harness lets a running session change its effort,** change it for that work and set it back to `default` afterwards.
+- **Otherwise, hand the work to a subagent started at that effort.** It drafts the change to the plan, or gathers and checks a panel's findings into the round file. Point it to the files instead of copying them. What it returns is its work, not a decision: you read it, and you send it.
+
+Write in the state which way this session uses.
+
 ## What the project manager does not do
 
 - **Build an epic.** A fix goes back to the epic's worker, even a small one.
@@ -69,11 +86,11 @@ The second half lets the session stop while it waits for the human.
 
 ## Messages
 
-Reach a worker the way the harness lets sessions message each other, by the title it was started with. Keep messages short, and point to files in `paths.notes`. Where sessions cannot message each other, tell the human which file to point which session to.
+Reach a worker the way the harness lets sessions message each other, by the title it was started with. Keep messages short, and point to files in `paths.notes` instead of copying what they say. Where sessions cannot message each other, tell the human which file to point which session to.
 
 ## Stopping
 
 Stop only when the goal holds. Before stopping:
-1. Update the log.
+1. Update the log's state.
 2. Write a status with `siesta-status`.
 3. Check that the checkpoint says what waits for the human, and how to answer.
