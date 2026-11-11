@@ -42,7 +42,6 @@ The script reads the integration branch on origin, after fetching it, and never 
 |---|---|
 | `merged` | `publish`, then `status` for each roadmap, epic and spike whose file the merge changed |
 | `epic-started` | `start <id>`, once the epic's branch is pushed with its spec set to `active` |
-| `before-pr` | `check`. Report a difference the pull request did not cause in the pull request; do not fix it there |
 
 When a skill needs `{issue}` for a naming template, such as a session's title or a pull request's reference, `issue <id>` gives it.
 
@@ -55,7 +54,7 @@ When a skill needs `{issue}` for a naming template, such as a session's title or
 
 ## Authority and failure
 
-The add-on writes issues, labels, milestones and sub-issue links in the repository `addons.sync-github.repo` names, by the human's choice when they set it up. It never deletes anything in GitHub, closes only what the record says is done, and touches no other repository. In CI it only checks.
+The add-on writes issues, labels, milestones and sub-issue links in the repository `addons.sync-github.repo` names, by the human's choice when they set it up. It never deletes anything in GitHub, closes only what the record says is done, and touches no other repository. Mirror drift is reported through the checkpoint; it is never a delivery check on a pull request.
 
 When GitHub or the CLI fails, the step that reached the moment still completes: say that the sync failed and why, and the next moment tries again.
 
@@ -65,5 +64,5 @@ When GitHub or the CLI fails, the step that reached the moment still completes: 
 
 1. `addons.sync-github` in `.siesta/config.yaml`, with `repo` when the origin remote is not the GitHub repository to use.
 2. This skill's `scripts/sync-github.mjs` copied to `.siesta/addons/sync-github.mjs`. When the copy's `version` is older than this skill's, update it in a pull request.
-3. [assets/siesta-sync.yml](assets/siesta-sync.yml) copied to `.github/workflows/siesta-sync.yml`, so that every pull request checks the mirror.
+3. Install no pull-request workflow. When upgrading an existing setup, remove the Siesta mirror-check job from `.github/workflows/siesta-sync.yml` and retire its required-check setting, if any, through the human-approved setup change. Preserve unrelated jobs. If the file contains only that job, remove it. Until its required-check setting is retired, report the blocker instead of bypassing it.
 4. Once those are merged, `publish --dry-run`, shown to the human. The first publish creates many issues, so it waits for their yes.

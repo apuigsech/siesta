@@ -1,6 +1,7 @@
 # Review of <target>, round <n>
 
 - **What:** <the pull request and its branch at the reviewed commit, or the roadmap>, for <its epic or its phases>.
+- **Validation base:** <integration commit used by the checks, for a pull request>.
 - **Pass:** <a round of the panel, or the closing pass>, at the <effort> effort<; when every round runs at the `closing` effort, why>.
 - **Panel:** <how many reviewers; when `reviewers` has classes, the class of this change and the reason; any substitution; or "not independent", when the lead reviewed alone, and why>.
 - **Blocking:** <the blocking severities>. **Rounds:** <n> of <max_rounds>.

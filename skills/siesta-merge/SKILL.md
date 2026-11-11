@@ -22,7 +22,8 @@ Check each condition now, on the pull request as it is:
 |---|---|
 | The review is closed | Every finding of every round is closed, as `siesta-review` says |
 | The head is the one reviewed | The head commit is the one the last round and the check of its fixes saw. Any commit since, a merge of the integration branch included, has what it changed checked first, by whoever `recheck` gives it to in `siesta-review` |
-| Its checks pass | Every check the host runs on that head commit has passed |
+| Its checks pass | Every check the host runs on that head commit has passed, and the epic report (or the PR body for a recording-only change) records passing repository checks for that head against the current integration commit |
+| The base is still validated | Fetch and compare the current integration commit with the one recorded for validation. If it advanced, the author merges it into the branch and reruns the checks, even without textual conflicts; review only the resulting delta under the existing re-check rules |
 | It merges cleanly | No conflict with the integration branch. When there is one, the worker brings the integration branch in, the checks run again, and what the merge changed is checked the same way |
 | The spec is true | When it sets the epic to `completed`, every acceptance criterion is checked. With one unchecked, the spec stays `active` |
 | Nothing in it waits for the human | See below |
@@ -48,7 +49,7 @@ The two conditions on its review do not apply; every other does, and the merge i
 
 ## Merge
 
-Merge with the host's own tool, by `git.merge.method`, pinned to the reviewed head, so that nothing else gets in. On GitHub:
+Serialize this project manager's merges. Immediately before requesting a merge, re-read both the pull request head and the integration commit; if either changed since validation, return to the checks above. Use the host's up-to-date-branch protection or merge queue when available to guard concurrent merges by others. Head pinning alone does not atomically pin the base. Merge with the host's own tool, by `git.merge.method`, pinned to the reviewed head, so that nothing else gets in. On GitHub:
 
 ```bash
 gh pr merge <number> --<method> --match-head-commit <reviewed sha> --subject "<subject>" --body-file <message file>

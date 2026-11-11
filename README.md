@@ -246,8 +246,8 @@ The retro reads those corrections at the end of the roadmap.
 
 ## Configuration
 
-A repository is set up for Siesta when it has `.siesta/config.yaml`. The file holds only what
-differs from [Siesta's defaults](skills/siesta/assets/defaults.yaml), which list every key with its
+A repository is set up for Siesta when it has `.siesta/config.yaml`. The file stores the complete
+approved `autonomy`; other sections hold only what differs from [Siesta's defaults](skills/siesta/assets/defaults.yaml), which list every key with its
 meaning.
 
 ```yaml
@@ -271,6 +271,8 @@ review:
     perspectives: [correctness, tests]
 
 autonomy:
+  waits_for_human: [decision, phase-acceptance, scope-change, merge-without-panel, infra-apply, new-cost, delete, security]
+  never: [push-integration-branch, force-push]
   standing_approvals:
     - id: SA-1
       allows: "Accepting decisions on how amounts are rounded or written"
@@ -284,8 +286,9 @@ The configuration combines these files, from lowest to highest precedence:
 3. The repository's file: `.siesta/config.yaml`, committed.
 4. The checkout's file: `.siesta/config.local.yaml`, never committed.
 
-`autonomy` comes only from the repository's file and the layers below it, so a file nobody reviews
-cannot change what the agents may do.
+`autonomy` ignores machine and checkout overrides. Setup stores all its approved values in the
+repository, so future defaults cannot change them. Older sparse configurations need their effective
+autonomy confirmed through setup before those values are written explicitly.
 
 | Section | Sets |
 |---|---|
@@ -313,6 +316,9 @@ Reviews take a large share of a roadmap's tokens. These keys size them to what e
 | `roles.reviewer.effort`, `roles.rechecker.effort` | One effort, or `{ rounds, closing }`: the rounds at a lower effort, and one closing pass at a higher one before the review ends |
 | `roles.pm.effort` | One effort, or `{ default, plan, review }`: coordination at one effort, planning and leading reviews at another |
 
+The default pull-request panel has two reviewers, three for security changes and one for docs-only
+changes. Plans retain their five-reviewer panel.
+
 Each round's file records what its reviewers cost and who found each finding. `siesta-retro` counts
 them by effort, so the next roadmap is tuned from figures. The wording of a pull request's body
 opens no round: the project manager says it right in the merge message.
@@ -329,7 +335,10 @@ opens no round: the project manager says it right in the merge message.
 | Briefs, reports, review rounds, statuses, logs and retros | `~/.local/state/siesta/<repo>/notes/`, outside every worktree |
 | Workers' worktrees | `~/.local/state/siesta/<repo>/worktrees/` |
 
-The repository is the record. GitHub, through the sync add-on, only mirrors it.
+The repository is the record. GitHub, through the sync add-on, only mirrors it. Sync runs after
+merges and epic starts, or on explicit request; mirror drift does not gate pull requests. When
+upgrading, remove the old Siesta mirror-check workflow and retire its required-check setting, if
+configured, through an approved setup change. Preserve unrelated workflow jobs.
 
 ## What the agents do on their own, and what they don't
 
@@ -352,8 +361,12 @@ The repository is the record. GitHub, through the sync add-on, only mirrors it.
   needs your yes.
 - **`autonomy` is yours.** The agents never change it. A change goes to you as a question, and only
   a `siesta-setup` conversation writes the text you approved.
-- **Merges** are pinned to the head that was reviewed, after every finding is closed and every
-  check passes. A pull request that only records what is already settled, such as your answer to a
+- **Recovery.** Resuming a worker uses its existing assignment and actual PR stage. A repeated
+  failure without progress gets one retry, then waits in the checkpoint while independent work
+  continues. Test mutations run in disposable copies. Dependencies must merge before their
+  dependants start.
+- **Merges** validate against the current integration commit and are pinned to the head that was
+  reviewed, after every finding is closed and every check passes. A pull request that only records what is already settled, such as your answer to a
   question, needs no review round. Nothing works around a refusal from the host or a guard.
 - **Hypotheses.** When information is missing and the choice can be undone, the agent takes a
   hypothesis, says so, and goes on. When the choice cannot be undone, it asks.

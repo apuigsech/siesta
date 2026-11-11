@@ -6,7 +6,6 @@ You are the worker of the <epic or spike> `<epic id>`. Use the `siesta-work-epic
 
 - Worktree `<path>`, on the branch `<branch>`, pushed, cut from `<base>` at `<commit>`.
 - The spec is `active` since <date>.
-- <When the branch is cut from another epic's branch: which one, why, and when to bring in the integration branch instead.>
 
 ## What to read
 

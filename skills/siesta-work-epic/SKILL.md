@@ -13,7 +13,7 @@ user-invocable: false
 ## Start, or start again
 
 1. Read the brief, the repository's agent instructions, the spec and, when there is one, the plan beside it. When you start again, read your report first: it is where you left off.
-2. Check that you are where the brief says: its worktree, its branch, and the spec `active` on it. If not, stop and tell the project manager.
+2. Check the epic identity, worktree and branch against the brief and report. A new assignment has its spec `active`. On resumption, `blocked` may mean an unresolved blocker, and `completed` on this branch may mean its final pull request still needs review fixes; resume that stage, without resetting its status. If the final pull request is already merged, report that and stop. If the identity or stage cannot be reconciled, stop and tell the project manager.
 3. Prepare the worktree as the repository's instructions say, such as installing its dependencies.
 
 ## Plan
@@ -24,7 +24,7 @@ Write `plan.md` beside the spec, or check the one there against the repository a
 
 - Write the tests first where the epic has behavior.
 - Commit as `naming.commits` says. Sign as `git.signed_commits` says, every commit before it is pushed.
-- Fetch before each push. When the integration branch moved, bring it in with a merge; never rewrite commits that are already pushed.
+- Never rewrite commits that are already pushed. Before final validation for a merge, fetch and merge in the current integration branch when it has moved; a routine push does not require that update. Record the validated head and integration commit with the checks in the report.
 - Check a criterion in the spec only once it is verified, and write its evidence in the report at the same time.
 - A lasting choice about how the product or the system will be is a decision. Record it with `siesta-decide` as Proposed, with the next free number across the integration branch and every open branch.
 - A missing fact whose choice can be undone: take the hypothesis, write it in the report and go on. When the choice cannot be undone, ask the project manager and meanwhile build what does not depend on it.
@@ -36,11 +36,11 @@ An action of a kind in `autonomy.waits_for_human` goes to the project manager, w
 
 ## The pull request
 
-1. **In an epic, with `execution.mutation_check` on, check that the tests catch faults.** Once they all pass, break the code the epic changed on purpose, one small change at a time: a condition reversed, a rule a criterion or a decision sets broken, a line removed. Each change is a mutation. Run the tests, then undo it. One mutation for each rule or branch that matters is enough. Run them through one script that keeps each run's output in a file and prints one line for each mutation, caught or survived, and read a run's output only to explain a survivor: the tests' output stays out of your context. A mutation the tests still pass survived:
+1. **In an epic, with `execution.mutation_check` on, check that the tests catch faults.** Once they all pass, use a disposable copy of the exact candidate tree, including any uncommitted work, outside every working tree. Never mutate the delivery worktree. In the copy, break the code the epic changed on purpose, one small change at a time: a condition reversed, a rule a criterion or a decision sets broken, a line removed. Each change is a mutation. Run the tests, then restore the copy before the next mutation. If interrupted, discard the copy and start from the candidate again; never carry mutations back to the delivery branch. One mutation for each rule or branch that matters is enough. Run them through one script that keeps each run's output in a file and prints one line for each mutation, caught or survived, and read a run's output only to explain a survivor: the tests' output stays out of your context. A mutation the tests still pass survived:
    - add the test that catches it;
    - or remove the code, when it made no difference;
    - or say in the report why it stays.
-2. Run every command in `execution.before_pr` until they all pass, then reach the moment `before-pr`.
+2. Run every command in `execution.before_pr`. Correct a diagnosed failure and rerun the affected checks. For the same unexplained or external failure, allow one retry; if it recurs without a relevant change or new evidence, record the failure, retry and last progress in the report, tell the project manager you are blocked, and work only on independent steps. Do not open the pull request as ready until all commands pass; then reach the moment `before-pr`.
 3. Set the spec to `completed` only in the epic's last pull request, and only when every acceptance criterion is checked and verified. Otherwise it stays `active`.
 4. Open the pull request against the integration branch with the host's own tool, such as `gh` on GitHub:
    - titled as `naming.commits` says, with `naming.pr_reference` when it is set;

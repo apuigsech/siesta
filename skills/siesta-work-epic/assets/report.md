@@ -2,6 +2,8 @@
 
 Branch `<branch>`, worktree `<path>`.
 
+Validation: head `<commit>`, integration `<commit>`, checks `<commands and results>`.
+
 ## State — <date and time>
 
 <Where the work stands: what is built and pushed, the pull requests and their review rounds, and what comes next.>

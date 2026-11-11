@@ -52,6 +52,8 @@ In a file written for an earlier version, `true` for `recheck` or for `review.pu
 
 ## Autonomy
 
+The repository stores all three autonomy keys explicitly after setup, so later default changes cannot change approved permissions. For an older sparse configuration, report the inherited values and propose materializing them through `siesta-setup` with the human's approval. Do not silently rewrite permissions.
+
 Entries in `waits_for_human` and `never` are kinds of action. These kinds have fixed meanings; any other entry is read literally, as its words say.
 
 | Kind | Means |

@@ -1,5 +1,5 @@
 # Siesta's defaults: every configuration key, its default and its meaning.
-# A repository's .siesta/config.yaml holds only what differs from these.
+# A repository stores its complete approved autonomy; other keys only when they differ from these.
 # How the layers combine: references/config.md in the siesta skill.
 
 version: 1
@@ -75,7 +75,7 @@ review:
     max_rounds: 5                 # past this, a checkpoint
     recheck: code                 # as in pull_request; in a plan, code is a change of scope, of acceptance criteria or of dependencies
   pull_request:
-    reviewers: 5                  # a number, or one per class of change: { default: 2, security: 3, docs-only: 1 }
+    reviewers: { default: 2, security: 3, docs-only: 1 } # a number, or one per class of change
     perspectives: [correctness, security, performance, operability, tests]
     blocking: [critical, high]    # severities that block a merge
     max_rounds: 5                 # past this, a checkpoint
