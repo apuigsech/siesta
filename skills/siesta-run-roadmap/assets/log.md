@@ -26,6 +26,10 @@ Roadmap `<roadmap id>`, integration branch `<branch>`, since <date>. History: `<
 
 - <date> — <A correction of the human's, or a choice of the project manager's, that still binds the work, in one line. Its full entry is in the history.>
 
+## Blocked attempts
+
+<For each repeated failure: operation or session, cause, last concrete progress, whether its one retry was used, and what would unblock it; or "None". Preserve this across restarts.>
+
 ## Next
 
 <What the project manager does next.>

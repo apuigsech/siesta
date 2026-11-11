@@ -45,8 +45,8 @@ The second half lets the session stop while it waits for the human.
    - a review has closed: merge it with `siesta-merge`;
    - one of your own pull requests only records, as `siesta-merge` says: merge it with that skill, without a review round;
    - a worker waits for you: answer it;
-   - a worker's session ended before its work did: start it again with `siesta-launch-worker`.
-3. **Start new epics.** In the roadmap's order, start each planned epic and spike of an accepted phase that can start, with `siesta-launch-worker`, while slots are free. A spike whose verdict other epics wait for goes first.
+   - a worker's session ended before its work did: reconcile its assignment and apply the no-progress rule below before resuming it with `siesta-launch-worker`.
+3. **Start new epics.** Reconcile the worker assignments as `siesta-launch-worker` says; specs on integration alone do not show all occupied slots. In the roadmap's order, start each planned epic and spike of an accepted phase that can start, with `siesta-launch-worker`, while slots are free. A spike whose verdict other epics wait for goes first.
 4. **Carry what waits for the human** to the checkpoint with `siesta-checkpoint`: the workers' questions, approvals and hypotheses, and your own.
 5. **Close a phase.** When all its epics are completed, verify each of its completion criteria yourself, on the integration branch or in what it deploys.
    - When they hold, record them as checked, and the phase as `completed`, in a pull request that only records.
@@ -60,6 +60,10 @@ The second half lets the session stop while it waits for the human.
    5. Make the changes they accept, as `siesta-retro` says.
 7. **Meet the human** with `siesta-status`, at the times in `status.meetings` or when they ask.
 8. **Wait, or go on.** When nothing can move until a worker or the human answers, wait for their messages. Look again no more often than the work can change. Then go back to step 1.
+
+## No progress
+
+Record a failed operation or ended session, its cause, the last concrete progress and its retry in the existing state and worker report. One retry without a relevant change or new evidence is enough. If the same failure recurs without progress, mark the assignment blocked, put the cause and what would unblock it in the checkpoint, and continue independent epics. Keep the assignment counted toward the parallel limit until it is resolved; do not fill its slot by silently replacing it. Resume only when the cause changes or new evidence gives a different recovery step, not merely because another loop or session started. A normal session ending after progress does not count as the same failure.
 
 ## Effort
 

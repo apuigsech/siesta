@@ -7,9 +7,9 @@ description: Prepares a repository to be worked on with Siesta by writing its .s
 
 **REQUIRED BACKGROUND:** load the `siesta` skill and read its configuration reference and defaults. This skill writes what they define.
 
-**Outcome:** a `.siesta/config.yaml` the human approved, holding `version: 1` and only what differs from the defaults; ignore entries for the files that are never committed; and a pointer to Siesta in the repository's agent instructions.
+**Outcome:** a `.siesta/config.yaml` the human approved, holding `version: 1`, the complete approved `autonomy`, and otherwise only what differs from the defaults; ignore entries for the files that are never committed; and a pointer to Siesta in the repository's agent instructions.
 
-**Authority:** this skill changes only `.siesta/`, the repository's ignore file and its agent-instructions file. It does not commit, push, install anything, or touch anything outside the repository. Nothing in the setup depends on the harness: write nothing that only one harness reads.
+**Authority:** this skill changes only `.siesta/`, the repository's ignore file and its agent-instructions file. It does not commit, push, install anything, or touch anything outside the repository. The sync add-on may also remove its obsolete mirror-check workflow as its upgrade instructions say; changing a required-check setting is a separate human-approved action. Nothing in the setup depends on the harness: write nothing that only one harness reads.
 
 ## 1. Look before asking
 
@@ -48,7 +48,7 @@ Ask in this order, skipping what is already settled:
 
 ## 3. Write
 
-Show the complete `.siesta/config.yaml` and write it after the human's yes; their explicit word that they do not need to see it first counts as that yes. Keep only the keys that differ from the defaults: a short file is easier to review, and defaults improved later still reach the repository.
+Show the complete `.siesta/config.yaml` and write it after the human's yes; their explicit word that they do not need to see it first counts as that yes. Always write all three `autonomy` keys (`waits_for_human`, `never`, `standing_approvals`) with the values the human approved, even when they match the defaults. For other sections, keep only keys that differ from the defaults. When upgrading a sparse configuration, show its current effective autonomy for approval before materializing it; never claim to know which older defaults the human originally accepted.
 
 Then:
 

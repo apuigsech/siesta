@@ -12,15 +12,17 @@ user-invocable: false
 
 ## 1. Check it can start
 
-An epic or spike starts when all of these hold, on the integration branch:
+Before starting, reconcile the project manager's worker rows with the actual sessions, worktrees, branches and pull requests. Recover an existing assignment instead of launching it twice, including when a previous launch stopped before its log was written. Count assigned epics that have not had their final merge, including blocked workers and pull requests awaiting review, toward `execution.max_parallel_epics`; a spec completed on a worker's branch does not free a slot.
 
-- its phase is accepted and its status is `planned`;
-- every epic in its `depends_on` is `completed`;
+A new epic or spike starts when all of these hold:
+
+- on the integration branch, its phase is accepted and its status is `planned`, and it has no existing assignment;
+- every epic in its `depends_on` is `completed` on the integration branch;
 - every open question in its `waits_for` is answered;
 - what its spec's "Waits for the human" needs before work begins, such as an account, is there;
-- fewer than `execution.max_parallel_epics` epics are `active`, and with `parallel_when: disjoint-files`, its `touches` share nothing with an active epic's.
+- the reconciled assignments leave a free slot, and with `parallel_when: disjoint-files`, its `touches` share nothing with an assigned epic's.
 
-The project manager may start an epic on a dependency that is built and reviewed but not merged. Then cut the branch from that dependency's branch, and say so, with the reason, in the brief, the spec's first commit and the log.
+Always start from the integration branch. A reviewed dependency that has not merged is still a dependency to wait for.
 
 ## 2. The worktree and the branch
 
@@ -54,4 +56,4 @@ Check that it started, where the launcher allows it, and write the worker in the
 
 ## Starting again
 
-When a worker's session ended before its work did, start a new session the same way, in the same worktree, with the same brief. The worker picks up from its report. Start a new one only once the old one is over: two sessions never work in one worktree.
+When a worker's session ended before its work did, reconcile its assignment first and apply the no-progress rule in `siesta-run-roadmap`. Resume in the same worktree and branch, pointing to its report and current pull request or blocker. Do not repeat the new-epic status commit or branch creation. Start a new session only once the old one is over: two sessions never work in one worktree.

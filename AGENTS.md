@@ -39,7 +39,7 @@ manifests for each harness. No agents, hooks or adapters yet.
 
 ## Checking a change
 
-Run the tests, `node --test tests/`, after changing a skill or a script; they need Node 20 or later and git, and reach no network. `tests/skills/` checks every skill's frontmatter and its `agents/openai.yaml` against rules 2 and 3, and `tests/version/` checks rule 5. Codex's own skill validator refuses the frontmatter fields of rule 3, which Codex itself ignores when it runs.
+Run the tests, `node --test tests/*/*.test.mjs`, after changing a skill or a script; they need Node 20 or later and git, and reach no network. `tests/skills/` checks every skill's frontmatter and its `agents/openai.yaml` against rules 2 and 3, and `tests/version/` checks rule 5. Codex's own skill validator refuses the frontmatter fields of rule 3, which Codex itself ignores when it runs.
 
 Run each harness's own check before a pull request:
 
