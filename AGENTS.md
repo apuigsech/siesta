@@ -28,16 +28,18 @@ manifests for each harness. No agents, hooks or adapters yet.
    such as hooks or a way to open sessions, it goes in `adapters/<harness>/`, referenced from that
    harness's manifest alone. No build step until two harnesses need different content for the same
    thing.
-5. **One version.** These six fields hold the same version, changed together:
+5. **One version.** These seven fields hold the same version, changed together:
    - `.claude-plugin/plugin.json` › `version`
    - `.claude-plugin/marketplace.json` › `metadata.version` and the plugin's `version`
    - `.codex-plugin/plugin.json` › `version`
    - `.agents/plugins/marketplace.json` › the plugin's `version`
    - `package.json` › `version`
+   - `skills/siesta-sync-github/scripts/sync-github.mjs` › `VERSION`, by which a repository knows
+     that its copy of the script is out of date
 
 ## Checking a change
 
-Run the tests, `node --test tests/`, after changing a skill or a script; they need Node 20 or later and git, and reach no network. `tests/skills/` checks every skill's frontmatter and its `agents/openai.yaml` against rules 2 and 3. Codex's own skill validator refuses the frontmatter fields of rule 3, which Codex itself ignores when it runs.
+Run the tests, `node --test tests/`, after changing a skill or a script; they need Node 20 or later and git, and reach no network. `tests/skills/` checks every skill's frontmatter and its `agents/openai.yaml` against rules 2 and 3, and `tests/version/` checks rule 5. Codex's own skill validator refuses the frontmatter fields of rule 3, which Codex itself ignores when it runs.
 
 Run each harness's own check before a pull request:
 

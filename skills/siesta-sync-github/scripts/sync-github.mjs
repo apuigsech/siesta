@@ -18,10 +18,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+// Siesta's version, the same as in its manifests, which a test compares. A repository's copy of
+// this script is out of date when its version is older.
+export const VERSION = '0.3.0';
+
 // The defaults this script needs: the same values as the siesta skill's assets/defaults.yaml,
 // which a test compares.
-export const VERSION = '0.1.0';
-
 export const DEFAULTS = {
   paths: { roadmaps: '.siesta/roadmaps/', epics: '.siesta/epics/', feature: 'docs/features/{feature}.md' },
   git: { integration_branch: null },
