@@ -43,6 +43,8 @@ The shop opens to the public.
 
 ## Phase 1 — The shop runs in a preview
 
+**Slug:** preview
+
 **Status:** accepted on 2026-10-30 by the owner: "Sí".
 
 Completion criteria:
@@ -50,6 +52,8 @@ Completion criteria:
 - [ ] The checks pass.
 
 ## Phase 2 — Customers return garments
+
+**Slug:** returns
 
 **Status:** proposed
 
@@ -78,9 +82,9 @@ What is true when it is done.
 const FILES = {
   '.siesta/config.yaml': CONFIG,
   '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP,
-  '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'planned', phase: 1 }),
-  '.siesta/epics/20261030-carrier-events/spec.md': spec({ id: '20261030-carrier-events', title: 'When the carrier events arrive', kind: 'spike', status: 'planned', phase: 1 }),
-  '.siesta/epics/20261030-returns/spec.md': spec({ id: '20261030-returns', title: 'Returns', status: 'proposed', phase: 2, feature: 'order-cancellations-and-returns' }),
+  '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'planned', phase: 'preview' }),
+  '.siesta/epics/20261030-carrier-events/spec.md': spec({ id: '20261030-carrier-events', title: 'When the carrier events arrive', kind: 'spike', status: 'planned', phase: 'preview' }),
+  '.siesta/epics/20261030-returns/spec.md': spec({ id: '20261030-returns', title: 'Returns', status: 'proposed', phase: 'returns', feature: 'order-cancellations-and-returns' }),
   'docs/features/order-cancellations-and-returns.md': '# Order cancellations and returns\n\nA customer cancels or returns.\n',
 };
 
@@ -129,7 +133,7 @@ test('check reports every item missing from an empty GitHub', () => {
   const { run } = setup();
   const { code, out } = run('check');
   assert.equal(code, 1);
-  for (const id of ['20261030-open-the-shop', '20261030-open-the-shop/phase-1', '20261030-open-the-shop/phase-2', '20261030-checks-pass', '20261030-carrier-events', '20261030-returns', 'feature/order-cancellations-and-returns']) {
+  for (const id of ['20261030-open-the-shop', '20261030-open-the-shop/preview', '20261030-open-the-shop/returns', '20261030-checks-pass', '20261030-carrier-events', '20261030-returns', 'feature/order-cancellations-and-returns']) {
     assert.match(out, new RegExp(`missing.*${id.replace('/', '\\/')}`), `check names ${id} as missing`);
   }
 });
@@ -143,7 +147,7 @@ test('publish creates the roadmap, its phases, epics, spikes and features, and c
   assert.equal(roadmap.title, 'Open the shop [20261030-open-the-shop]');
   assert.deepEqual(labelsOf(roadmap), ['siesta', 'siesta:roadmap', 'status:active']);
 
-  const phase1 = gh.milestones.find((m) => m.description.includes('<!-- siesta-id: 20261030-open-the-shop/phase-1 -->'));
+  const phase1 = gh.milestones.find((m) => m.description.includes('<!-- siesta-id: 20261030-open-the-shop/preview -->'));
   assert.equal(phase1.title, 'Open the shop: The shop runs in a preview');
   assert.equal(phase1.state, 'open');
 
@@ -187,7 +191,7 @@ test('publish --dry-run lists the changes and writes nothing', () => {
 
 test('publish reads the integration branch, not the working tree', () => {
   const { dir, run, github } = setup();
-  writeFiles(dir, { '.siesta/epics/20261030-unmerged/spec.md': spec({ id: '20261030-unmerged', title: 'Not merged yet', status: 'proposed', phase: 2 }) });
+  writeFiles(dir, { '.siesta/epics/20261030-unmerged/spec.md': spec({ id: '20261030-unmerged', title: 'Not merged yet', status: 'proposed', phase: 'returns' }) });
   run('publish');
   assert.equal(issueFor(github(), '20261030-unmerged'), undefined);
 });
@@ -195,7 +199,7 @@ test('publish reads the integration branch, not the working tree', () => {
 test('publish leaves an existing issue status alone, and check reports the difference', () => {
   const { dir, run, github } = setup();
   run('publish');
-  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 1 }) });
+  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 'preview' }) });
   commitAndPush(dir, 'complete the checks');
   run('publish');
   const epic = issueFor(github(), '20261030-checks-pass');
@@ -210,8 +214,8 @@ test('status applies the record, closing a completed epic as completed and a can
   const { dir, run, github } = setup();
   run('publish');
   writeFiles(dir, {
-    '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 1 }),
-    '.siesta/epics/20261030-carrier-events/spec.md': spec({ id: '20261030-carrier-events', title: 'When the carrier events arrive', kind: 'spike', status: 'cancelled', phase: 1 }),
+    '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 'preview' }),
+    '.siesta/epics/20261030-carrier-events/spec.md': spec({ id: '20261030-carrier-events', title: 'When the carrier events arrive', kind: 'spike', status: 'cancelled', phase: 'preview' }),
   });
   commitAndPush(dir, 'statuses');
   assert.equal(run('status', '20261030-checks-pass', '20261030-carrier-events').code, 0);
@@ -228,7 +232,7 @@ test('status applies the record, closing a completed epic as completed and a can
 test('a feature closes once every epic that builds it is completed or cancelled', () => {
   const { dir, run, github } = setup();
   run('publish');
-  writeFiles(dir, { '.siesta/epics/20261030-returns/spec.md': spec({ id: '20261030-returns', title: 'Returns', status: 'completed', phase: 2, feature: 'order-cancellations-and-returns' }) });
+  writeFiles(dir, { '.siesta/epics/20261030-returns/spec.md': spec({ id: '20261030-returns', title: 'Returns', status: 'completed', phase: 'returns', feature: 'order-cancellations-and-returns' }) });
   commitAndPush(dir, 'returns done');
   run('status', '20261030-returns');
   run('publish');
@@ -241,14 +245,41 @@ test('a phase milestone closes when the roadmap marks the phase completed', () =
   writeFiles(dir, { '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP.replace('**Status:** accepted on 2026-10-30 by the owner: "Sí".', '**Status:** completed on 2026-11-20.') });
   commitAndPush(dir, 'phase 1 done');
   run('publish');
-  const phase1 = github().milestones.find((m) => m.description.includes('phase-1 -->'));
+  const phase1 = github().milestones.find((m) => m.description.includes('open-the-shop/preview -->'));
   assert.equal(phase1.state, 'closed');
+});
+
+test('a phase keeps its milestone when it is renumbered and retitled, because its slug does not change', () => {
+  const { dir, run, github } = setup();
+  run('publish');
+  const before = github().milestones.find((m) => m.description.includes('open-the-shop/returns -->'));
+  writeFiles(dir, { '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP.replace('## Phase 2 — Customers return garments', '## Phase 3 — Customers return what they bought') });
+  commitAndPush(dir, 'renumber');
+  run('publish');
+  const milestones = github().milestones.filter((m) => m.description.includes('open-the-shop/returns -->'));
+  assert.equal(milestones.length, 1);
+  assert.equal(milestones[0].number, before.number);
+  assert.equal(milestones[0].title, 'Open the shop: Customers return what they bought');
+  assert.equal(issueFor(github(), '20261030-returns').milestone, before.number);
+});
+
+test('check reports a phase with no slug and an epic naming a slug its roadmap lacks', () => {
+  const { dir, run } = setup();
+  writeFiles(dir, {
+    '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP.replace('**Slug:** returns\n\n', ''),
+    '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'planned', phase: 'nowhere' }),
+  });
+  commitAndPush(dir, 'break the phases');
+  const { code, out } = run('check');
+  assert.equal(code, 1);
+  assert.match(out, /problem.*phase 2 of 20261030-open-the-shop has no slug/);
+  assert.match(out, /problem.*20261030-checks-pass names the phase nowhere/);
 });
 
 test('publish follows a renamed epic by its id', () => {
   const { dir, run, github } = setup();
   run('publish');
-  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass in CI', status: 'planned', phase: 1 }) });
+  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass in CI', status: 'planned', phase: 'preview' }) });
   commitAndPush(dir, 'rename');
   run('publish');
   assert.equal(issueFor(github(), '20261030-checks-pass').title, 'The checks pass in CI [20261030-checks-pass]');
@@ -272,7 +303,7 @@ test('start marks a planned epic active once its branch is on the remote', () =>
   run('publish');
   assert.equal(run('start', '20261030-checks-pass').code, 2, 'no branch yet: refused');
   git(dir, 'checkout', '-q', '-b', 'chore/checks-pass');
-  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'active', phase: 1 }) });
+  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'active', phase: 'preview' }) });
   commitAndPush(dir, 'start the checks', 'chore/checks-pass');
   assert.equal(run('start', '20261030-checks-pass').code, 0);
   assert.ok(issueFor(github(), '20261030-checks-pass').labels.includes('status:active'));

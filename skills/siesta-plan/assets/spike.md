@@ -4,7 +4,7 @@ title: <Spike title>
 kind: spike
 status: proposed
 roadmap: <roadmap id>
-phase: <phase number>
+phase: <phase slug>
 depends_on: []
 waits_for: []
 touches: []

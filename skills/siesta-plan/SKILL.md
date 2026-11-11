@@ -41,7 +41,7 @@ Read the product, the architecture, the features and their designs, the decision
 
 ## 2. Draft
 
-- **Phases** deliver something the human can see working. Each has an outcome and completion criteria anyone can check.
+- **Phases** deliver something the human can see working. Each has an outcome and completion criteria anyone can check. Each has a slug, lowercase words joined by hyphens and unique in its roadmap, that epics and spikes name in their `phase`. The number in its heading only orders the phases: renumbering or retitling a phase never changes its slug.
 - **Epics** are one worker's work, reviewed in one pull request or a few, and as independent as their dependencies allow. Their acceptance criteria are checkboxes someone can verify. Carry each settled requirement exactly as its source says it, and name the source: a decision's id, the feature, the architecture.
 - `touches` names the parts of the architecture an epic changes, so that epics that touch different parts can run at the same time.
 - `feature` names the feature document an epic builds, by the name in `paths.feature`; `null` when it builds none.

@@ -4,7 +4,7 @@ title: <Epic title>
 kind: epic
 status: proposed
 roadmap: <roadmap id>
-phase: <phase number>
+phase: <phase slug>
 depends_on: []
 waits_for: []
 touches: []
