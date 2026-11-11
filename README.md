@@ -361,12 +361,19 @@ branch and worktree destinations, including resources left by historical work.
 Phases may use `## Phase — Title` or the older numbered heading. Their order is their document
 order, and their identity remains the explicit slug. Closing a phase records, for example,
 `completed on 2026-11-11: criteria verified on main at abc123`, using the commit actually verified.
-The script does not require closure evidence in older documents.
+The script does not require closure evidence in older documents. Every phase needs its `**Status:**` line, with
+`proposed`, `accepted` or `completed`: a phase without one is a problem, so that a lost line never reopens a completed
+phase's milestone.
 
 When upgrading to 0.5.0, existing `delivery.url` and numbered phase headings remain readable.
 Legacy `status: blocked` is preserved with a warning: recover its previous lifecycle status and
 blocker date from evidence before migrating; ask when unknown. No historical specs are rewritten
 automatically. Update the repository's copy of the sync script along with the skills.
+
+When upgrading to 0.5.1, a roadmap whose phases lack the `**Status:**` line must add it before the next
+`publish`, which refuses until then. `check` also reports an id carried by two issues or milestones, an issue with
+two status or kind labels, and a closed issue whose closing reason differs from its status; resolve them as the
+`siesta-sync-github` skill says.
 
 `check --json` separates mirror differences from advisory `warnings` and unmerged `pending`
 branch observations. Missing active branches do not by themselves change its exit code. A completed

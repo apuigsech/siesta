@@ -5,8 +5,8 @@
 //
 //   node sync-github.mjs check [--json] [--no-fetch]    compare, change nothing; exit 1 on a difference
 //   node sync-github.mjs publish [--dry-run] [--no-fetch]  create and update everything but statuses
-//   node sync-github.mjs status <id>... [--no-fetch]    set those items' statuses from the record
-//   node sync-github.mjs start <id> [--no-fetch]        mark a planned epic active once its branch is pushed
+//   node sync-github.mjs status <id>... [--dry-run] [--no-fetch]  set exactly those items' statuses from the record
+//   node sync-github.mjs start <id> [--dry-run] [--no-fetch]      mark a planned epic active once its branch is pushed
 //   node sync-github.mjs issue <id>                     print the issue number of an id
 //   node sync-github.mjs version                        print this script's version
 //
@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 
 // Siesta's version, the same as in its manifests, which a test compares. A repository's copy of
 // this script is out of date when its version is older.
-export const VERSION = '0.5.0';
+export const VERSION = '0.5.1';
 
 // The defaults this script needs: the same values as the siesta skill's assets/defaults.yaml,
 // which a test compares.
@@ -30,6 +30,8 @@ export const DEFAULTS = {
 };
 
 const STATUSES = ['proposed', 'planned', 'active', 'blocked', 'completed', 'cancelled'];
+const PHASE_STATUSES = ['proposed', 'accepted', 'completed'];
+const KIND_LABEL = /^siesta:(roadmap|epic|spike|feature)$/;
 const MARKER = /<!-- siesta-id: (.+?) -->/;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const marker = (id) => `<!-- siesta-id: ${id} -->`;
@@ -266,6 +268,9 @@ function readRecord(ctx) {
         problems.push(`phase ${phase.n} of ${fm.id} has ${phase.slug ? `the slug "${phase.slug}", which is not lowercase words joined by hyphens` : 'no slug'}`);
         continue;
       }
+      // A lost status line would read as proposed and reopen a completed phase's milestone.
+      if (phase.status === null) problems.push(`phase ${phase.slug} of ${fm.id} has no **Status:** line`);
+      else if (!PHASE_STATUSES.includes(phase.status)) problems.push(`phase ${phase.slug} of ${fm.id} has the status "${phase.status}", which is not one of ${PHASE_STATUSES.join(', ')}`);
       add({ id: `${fm.id}/${phase.slug}`, kind: 'phase', title: `${fm.title}: ${phase.title}`, status: phase.status, roadmap: String(fm.id), slug: phase.slug });
     }
   }
@@ -340,7 +345,7 @@ function phases(text) {
       const slugLine = /^\*\*Slug:\*\*\s*`?([^`\s]+)`?\s*$/.exec(lines[j]);
       if (slugLine) slug = slugLine[1];
     }
-    found.push({ n: heading[1] ? Number(heading[1]) : found.length + 1, title: heading[2].trim(), status: status ?? 'proposed', slug });
+    found.push({ n: heading[1] ? Number(heading[1]) : found.length + 1, title: heading[2].trim(), status, slug });
   }
   return found;
 }
@@ -375,18 +380,30 @@ function makeGh(dryRun) {
 function readGitHub(gh, repo, items) {
   const issues = new Map();
   const unknown = [];
+  // Every carrier of an id, so that two issues or two milestones with one id are reported, not silently merged.
+  const carriers = new Map();
+  const carry = (key, number) => carriers.set(key, [...(carriers.get(key) ?? []), number]);
   for (const issue of gh.list(`repos/${repo}/issues?state=all&labels=siesta&per_page=100`)) {
     if (issue.pull_request) continue;
     const id = MARKER.exec(issue.body ?? '')?.[1];
     if (!id) continue;
     issue.labelNames = issue.labels.map((l) => (typeof l === 'string' ? l : l.name));
+    carry(`issue ${id}`, issue.number);
     if (items.has(id)) issues.set(id, issue);
     else unknown.push({ id, issue });
   }
   const milestones = new Map();
   for (const milestone of gh.list(`repos/${repo}/milestones?state=all&per_page=100`)) {
     const id = MARKER.exec(milestone.description ?? '')?.[1];
-    if (id) milestones.set(id, milestone);
+    if (!id) continue;
+    carry(`milestone ${id}`, milestone.number);
+    milestones.set(id, milestone);
+  }
+  const duplicates = new Map();
+  for (const [key, numbers] of carriers) {
+    if (numbers.length < 2) continue;
+    const [what, id] = key.split(' ');
+    duplicates.set(id, `${id} is carried by ${numbers.length} ${what}s: ${numbers.map((n) => `#${n}`).join(', ')}; a person decides which one stays`);
   }
   const labels = new Set(gh.list(`repos/${repo}/labels?per_page=100`).map((l) => l.name));
   const parents = new Map();
@@ -394,7 +411,7 @@ function readGitHub(gh, repo, items) {
     if (items.get(id).kind !== 'roadmap') continue;
     for (const child of gh.list(`repos/${repo}/issues/${issue.number}/sub_issues?per_page=100`)) parents.set(child.number, issue.number);
   }
-  return { issues, milestones, labels, parents, unknown };
+  return { issues, milestones, labels, parents, unknown, duplicates };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -403,7 +420,6 @@ function readGitHub(gh, repo, items) {
 const kindLabels = (item) => ['siesta', `siesta:${item.kind}`, ...(item.blocked ? ['siesta:blocked'] : [])];
 const statusOf = (issue) => issue.labelNames.find((l) => l.startsWith('status:'))?.slice('status:'.length) ?? null;
 const closedBy = (status) => (status === 'completed' ? 'completed' : status === 'cancelled' ? 'not_planned' : null);
-const sameSet = (a, b) => a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
 const inStep = (github, record) => github === record || (github === 'active' && record === 'planned');
 
 function fileLink(ctx, path) {
@@ -450,6 +466,7 @@ function featureClosed(record, item) {
 
 function compare(ctx, record, github) {
   const differences = record.problems.map((p) => `problem    ${p}`);
+  for (const duplicate of github.duplicates.values()) differences.push(`problem    ${duplicate}`);
   const numbers = new Map([...github.issues].map(([id, issue]) => [id, issue.number]));
   for (const item of record.items.values()) {
     if (item.kind === 'phase') {
@@ -469,6 +486,10 @@ function compare(ctx, record, github) {
     }
     if (issue.title !== title(item)) differences.push(`title      ${item.id}  "${issue.title}" → "${title(item)}"`);
     if (!kindLabels(item).every((l) => issue.labelNames.includes(l))) differences.push(`labels     ${item.id}  lacks ${kindLabels(item).join(', ')}`);
+    const otherKinds = issue.labelNames.filter((l) => KIND_LABEL.test(l) && l !== `siesta:${item.kind}`);
+    if (otherKinds.length) differences.push(`labels     ${item.id}  also has ${otherKinds.join(', ')}`);
+    const statusLabels = issue.labelNames.filter((l) => l.startsWith('status:'));
+    if (statusLabels.length > 1) differences.push(`labels     ${item.id}  has ${statusLabels.length} status labels: ${statusLabels.join(', ')}`);
     if (issue.labelNames.includes('siesta:blocked') !== Boolean(item.blocked)) differences.push(`labels     ${item.id} blocker label differs`);
     if ((issue.body ?? '') !== body(ctx, item, numbers)) differences.push(`body       ${item.id}`);
     if (item.kind === 'feature') {
@@ -479,6 +500,9 @@ function compare(ctx, record, github) {
     const status = statusOf(issue);
     const stateFits = (issue.state === 'closed') === Boolean(closedBy(item.status)) || (status === 'active' && item.status === 'planned' && issue.state === 'open');
     if (!inStep(status, item.status) || !stateFits) differences.push(`status     ${item.id}  GitHub: ${status ?? 'none'} (${issue.state})  record: ${item.status}`);
+    else if (issue.state === 'closed' && closedBy(item.status) && issue.state_reason !== closedBy(item.status)) {
+      differences.push(`status     ${item.id}  closed as ${issue.state_reason ?? 'unknown'}, record: ${item.status} (${closedBy(item.status)})`);
+    }
     if (item.kind === 'epic' || item.kind === 'spike') {
       const milestone = github.milestones.get(`${item.roadmap}/${item.phase}`);
       if (milestone && issue.milestone?.number !== milestone.number) differences.push(`milestone  ${item.id}  not in ${milestone.title}`);
@@ -544,6 +568,7 @@ function publish(ctx, options) {
   for (const warning of record.warnings) console.log(`warning: ${warning}`);
   const gh = makeGh(options.dryRun);
   const github = readGitHub(gh, ctx.repo, record.items);
+  if (github.duplicates.size) throw new Failure([...github.duplicates.values()].join('\n'));
   const numbers = new Map([...github.issues].map(([id, issue]) => [id, issue.number]));
   let changes = 0;
   const send = (method, path, payload, description) => {
@@ -595,8 +620,10 @@ function publish(ctx, options) {
     const patch = {};
     if (issue.title !== title(item)) patch.title = title(item);
     if ((issue.body ?? '') !== wantedBody) patch.body = wantedBody;
-    const labels = [...new Set([...kindLabels(item), ...issue.labelNames.filter((name) => name !== 'siesta:blocked')])];
-    if (!sameSet(labels, issue.labelNames)) patch.labels = labels;
+    // Labels are added and removed one by one, never replaced as a set: a status label another writer set since this run read
+    // the issue is never written back.
+    const missing = kindLabels(item).filter((name) => !issue.labelNames.includes(name));
+    const stale = issue.labelNames.filter((name) => (name === 'siesta:blocked' && !item.blocked) || (KIND_LABEL.test(name) && name !== `siesta:${item.kind}`));
     if (extra.milestone !== undefined && issue.milestone?.number !== extra.milestone) patch.milestone = extra.milestone;
     if (item.kind === 'feature') {
       const state = featureClosed(record, item) ? 'closed' : 'open';
@@ -605,6 +632,14 @@ function publish(ctx, options) {
     if (Object.keys(patch).length) {
       send('PATCH', `repos/${ctx.repo}/issues/${issue.number}`, patch, `update issue ${item.id} (${Object.keys(patch).join(', ')})`);
       Object.assign(issue, patch);
+    }
+    if (missing.length) {
+      send('POST', `repos/${ctx.repo}/issues/${issue.number}/labels`, { labels: missing }, `label issue ${item.id} (${missing.join(', ')})`);
+      issue.labelNames = [...issue.labelNames, ...missing];
+    }
+    for (const name of stale) {
+      send('DELETE', `repos/${ctx.repo}/issues/${issue.number}/labels/${encodeURIComponent(name)}`, {}, `unlabel issue ${item.id} (${name})`);
+      issue.labelNames = issue.labelNames.filter((l) => l !== name);
     }
     return issue;
   };
@@ -632,28 +667,36 @@ function publish(ctx, options) {
   return 0;
 }
 
-function setStatus(ctx, ids, wanted) {
+// An explicit status sets exactly the record's lifecycle — one status label, the state and the closing reason — unlike check
+// and publish, which let a starting epic be active in GitHub while it is still planned on the integration branch.
+function setStatus(ctx, ids, wanted, options = {}) {
   const record = readRecord(ctx);
   if (record.problems.length) throw new Failure(record.problems.join('\n'));
-  const gh = makeGh(false);
+  const gh = makeGh(Boolean(options.dryRun));
   const github = readGitHub(gh, ctx.repo, record.items);
   for (const id of ids) {
     const item = record.items.get(id);
     if (!item || !['roadmap', 'epic', 'spike'].includes(item.kind)) throw new Failure(`${id} is not a roadmap, epic or spike on ${ctx.ref}`);
+    if (github.duplicates.has(id)) throw new Failure(github.duplicates.get(id));
+    if (!github.issues.get(id)) throw new Failure(`${id} has no issue yet: publish first`);
+  }
+  for (const id of ids) {
     const issue = github.issues.get(id);
-    if (!issue) throw new Failure(`${id} has no issue yet: publish first`);
-    const status = wanted ?? item.status;
-    if (!wanted && inStep(statusOf(issue), status) && issue.state === (closedBy(status) ? 'closed' : 'open')) continue;
-    const labels = [...issue.labelNames.filter((l) => !l.startsWith('status:')), `status:${status}`];
+    const status = wanted ?? record.items.get(id).status;
     const reason = closedBy(status);
+    const statusLabels = issue.labelNames.filter((l) => l.startsWith('status:'));
+    const exact = statusLabels.length === 1 && statusLabels[0] === `status:${status}`
+      && issue.state === (reason ? 'closed' : 'open') && (!reason || issue.state_reason === reason);
+    if (exact) continue;
+    const labels = [...issue.labelNames.filter((l) => !l.startsWith('status:')), `status:${status}`];
     const patch = { labels, state: reason ? 'closed' : 'open', state_reason: reason };
     gh.send('PATCH', `repos/${ctx.repo}/issues/${issue.number}`, patch, `set ${id} to ${status}`);
-    console.log(`#${issue.number} ${id}: ${status}`);
+    if (!options.dryRun) console.log(`#${issue.number} ${id}: ${status}`);
   }
   return 0;
 }
 
-function start(ctx, id) {
+function start(ctx, id, options = {}) {
   const record = readRecord(ctx);
   const item = record.items.get(id);
   if (!item || !['epic', 'spike'].includes(item.kind)) throw new Failure(`${id} is not an epic or spike on ${ctx.ref}`);
@@ -666,12 +709,14 @@ function start(ctx, id) {
   });
   if (!started) throw new Failure(`no branch on origin has ${id} active: push the epic's branch, with its spec set to active, first`);
   console.log(`${id} is active on ${started}`);
-  return setStatus(ctx, [id], 'active');
+  return setStatus(ctx, [id], 'active', options);
 }
 
 function issueNumber(ctx, id) {
   const record = readRecord(ctx);
-  const issue = readGitHub(makeGh(false), ctx.repo, record.items).issues.get(id);
+  const github = readGitHub(makeGh(false), ctx.repo, record.items);
+  if (github.duplicates.has(id)) throw new Failure(github.duplicates.get(id));
+  const issue = github.issues.get(id);
   if (!issue) throw new Failure(`${id} has no issue`);
   console.log(issue.number);
   return 0;
@@ -697,10 +742,10 @@ function main(argv) {
       return publish(ctx, options);
     case 'status':
       if (ids.length === 0) throw new Failure('name the ids whose status to set');
-      return setStatus(ctx, ids, null);
+      return setStatus(ctx, ids, null, options);
     case 'start':
       if (ids.length !== 1) throw new Failure('name one epic to start');
-      return start(ctx, ids[0]);
+      return start(ctx, ids[0], options);
     case 'issue':
       if (ids.length !== 1) throw new Failure('name one id');
       return issueNumber(ctx, ids[0]);

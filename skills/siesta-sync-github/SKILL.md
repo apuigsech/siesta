@@ -32,11 +32,13 @@ Run the repository's copy, `.siesta/addons/sync-github.mjs`, when it exists, so 
 |---|---|---|
 | `node <script> check` | Compares GitHub with the plan; reports advisory branch observations; changes nothing | 0 in step, 1 a difference, 2 cannot run |
 | `node <script> publish [--dry-run]` | Creates what is missing and fixes titles, bodies, labels, milestones and parents; leaves the statuses of existing issues alone | 0, or 2 |
-| `node <script> status <id>...` | Sets those items' statuses from the record | 0, or 2 |
-| `node <script> start <id>` | Marks a planned epic active, once a branch on origin has its spec set to `active` | 0, or 2 |
+| `node <script> status <id>... [--dry-run]` | Sets exactly those items' statuses from the record: one `status:` label, the state and the closing reason | 0, or 2 |
+| `node <script> start <id> [--dry-run]` | Marks a planned epic active, once a branch on origin has its spec set to `active` | 0, or 2 |
 | `node <script> issue <id>` | Prints the item's issue number | 0, or 2 |
 
-The script reads the integration branch on origin, after fetching it, and never the working tree: what is not merged is not published.
+The script reads the integration branch on origin, after fetching it, and never the working tree: what is not merged is not published. With `--dry-run`, `publish`, `status` and `start` print what they would change and send nothing.
+
+**One writer at a time.** Two writers can race: two `publish` runs can each create a missing issue, and one from an older read can undo a status set since. Only the project manager writes to GitHub, one command after another, from its checkout of the integration branch; other sessions run `check` and `issue`. `publish` adds and removes labels one by one and never writes a `status:` label, so that it cannot undo a status another writer set.
 
 `check --json` separates `differences` (exit 1) from `warnings` and `pending` branch observations (no effect on the exit code). It fetches with pruning, reports active epics with no published worker branch, and lists branch progress without publishing it. Completed or cancelled epics on integration are excluded: a merged PR may have had its branch deleted normally. An absent branch is a diagnostic to investigate, not permission to restart or a claim that code was lost. Matching uses the spec identity and changed progress, or the conventional branch slug; custom branch layouts may need the PM to resolve an advisory warning.
 
@@ -54,9 +56,12 @@ When a skill needs `{issue}` for a naming template, such as a session's title or
 ## Judging a difference
 
 - **`missing`, `title`, `labels`, `body`, `milestone`, `parent`:** `publish` fixes them.
-- **`status`:** find out why before changing anything. When a merge changed the item's file, run `status` for it. When someone changed the status in GitHub by hand, put it to the human as a checkpoint question; the record wins only once they say so.
+- **`status`:** find out why before changing anything. When a merge changed the item's `status`, run `status` for it; a merge that changed the file but not its status says nothing about it. When someone changed the status in GitHub by hand, put it to the human as a checkpoint question; the record wins only once they say so. Unlike `check`, an explicit `status <id>` also undoes an `active` that GitHub shows for an epic the record still has `planned`.
 - **`not in the record`:** an issue whose id left the integration branch. An epic dropped from the plan stays in it as `cancelled`, so this is usually a mistake in the plan. Leave the issue as it is and tell the human.
-- **`problem`:** the record itself is wrong, such as an epic naming a phase slug its roadmap lacks, or a phase with no slug. Fix the record in a pull request.
+- **`problem`:** the record itself is wrong, such as an epic naming a phase slug its roadmap lacks, or a phase with no slug or no `**Status:**` line. Fix the record in a pull request.
+- **`problem`, an id carried by two issues or two milestones:** usually two writers that raced. `publish`, `status`, `start` and `issue` refuse that id until a person decides which one stays and removes the other's marker; never delete it without their yes.
+- **`labels`, an issue with two `status:` labels or a second kind label:** a person added one by hand. `publish` removes a stale kind label; for the status, find out which is right as for `status` below, then `status <id>` leaves only the record's.
+- **`status`, closed for another reason:** a `completed` item closed as not planned, or the reverse. `status <id>` sets the record's reason.
 
 ## Authority and failure
 

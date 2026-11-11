@@ -109,6 +109,17 @@ if (rest.length === 0) {
     write({ method, path, body });
     out(issueView(issue));
   }
+} else if (rest[0] === 'issues' && rest[2] === 'labels') {
+  const issue = state.issues.find((i) => i.number === Number(rest[1]));
+  if (!issue) fail(404, 'Not Found');
+  if (method === 'POST') issue.labels = [...new Set([...issue.labels, ...body.labels])];
+  else if (method === 'DELETE') {
+    const name = decodeURIComponent(rest[3] ?? '');
+    if (!issue.labels.includes(name)) fail(404, 'Label does not exist');
+    issue.labels = issue.labels.filter((l) => l !== name);
+  } else fail(405, 'Method Not Allowed');
+  write({ method, path, body });
+  out(issue.labels.map((name) => ({ name })));
 } else if (rest[0] === 'issues' && rest[2] === 'sub_issues') {
   const parent = Number(rest[1]);
   if (method === 'GET') {
