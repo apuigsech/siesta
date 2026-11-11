@@ -26,6 +26,8 @@ Count every number; never estimate one.
 | The roadmap's progress | Its epics completed over its epics, cancelled ones left out |
 | Delivered since the last status | The epics that became `completed` on the integration branch after its date, read from the history |
 
+Show a blocker beside its lifecycle status, with its `since` date and reason; a blocked active epic is still counted from its branch. A legacy `status: blocked` needs its prior state recovered before its progress can be classified. Show delivery links for completed epics when recorded.
+
 Next to each figure, the human should be able to tell what it counts: "3 of 4 criteria", not "75 %" alone.
 
 ## Check what the record claims

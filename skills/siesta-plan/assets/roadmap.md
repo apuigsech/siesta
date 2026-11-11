@@ -10,11 +10,13 @@ status: proposed
 
 Builds on: <links to the product, the architecture, the features and the decisions it rests on>.
 
-## Phase 1 — <Phase title>
+## Phase — <Phase title>
 
 **Slug:** <phase-slug>
 
 **Status:** proposed
+
+<At closure: `completed on YYYY-MM-DD: criteria verified on <branch or environment> at <commit>`, with a link to the evidence when needed.>
 
 <What the human can see working at the end of the phase.>
 

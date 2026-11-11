@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 
 // Siesta's version, the same as in its manifests, which a test compares. A repository's copy of
 // this script is out of date when its version is older.
-export const VERSION = '0.4.0';
+export const VERSION = '0.5.0';
 
 // The defaults this script needs: the same values as the siesta skill's assets/defaults.yaml,
 // which a test compares.
@@ -217,7 +217,7 @@ function context(options) {
   const config = parseYaml(readFileSync(configPath, 'utf8'));
   const paths = { ...DEFAULTS.paths, ...(config.paths ?? {}) };
   const addon = config.addons?.['sync-github'] ?? {};
-  if (!options.noFetch) git(root, 'fetch', '-q', 'origin');
+  if (!options.noFetch) git(root, 'fetch', '-q', '--prune', 'origin');
   const branch =
     config.git?.integration_branch ??
     tryGit(root, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD')?.replace(/^origin\//, '') ??
@@ -246,6 +246,8 @@ function show(ctx, ref, path) {
 function readRecord(ctx) {
   const items = new Map();
   const problems = [];
+  const warnings = [];
+  const liveSlugs = new Map();
   const add = (item) => {
     if (items.has(item.id)) problems.push(`two items share the id ${item.id}`);
     items.set(item.id, item);
@@ -276,7 +278,31 @@ function readRecord(ctx) {
       continue;
     }
     const kind = fm.kind === 'spike' ? 'spike' : 'epic';
-    add({ id: String(fm.id), kind, title: fm.title, status: fm.status, roadmap: fm.roadmap ? String(fm.roadmap) : null, phase: fm.phase == null ? null : String(fm.phase), feature: fm.feature ?? null, path });
+    const slug = fm.slug ?? String(fm.id).replace(/^\d{8}-/, '');
+    if (typeof slug !== 'string' || !SLUG.test(slug)) problems.push(`${fm.id} needs a lowercase hyphenated slug (set slug explicitly for custom ids)`);
+    if (!['completed', 'cancelled'].includes(fm.status)) {
+      if (liveSlugs.has(slug)) problems.push(`${fm.id} and ${liveSlugs.get(slug)} share the live slug ${slug}, hence the worktree name`);
+      liveSlugs.set(slug, fm.id);
+    }
+    if (fm.type != null && (typeof fm.type !== 'string' || !SLUG.test(fm.type))) problems.push(`${fm.id} has an invalid commit type`);
+    let blocked = fm.blocked ?? null;
+    if (blocked !== null && (typeof blocked !== 'object' || Array.isArray(blocked) || typeof blocked.since !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(blocked.since) || typeof blocked.reason !== 'string' || !blocked.reason.trim())) {
+      problems.push(`${fm.id} blocked must be null or { since: YYYY-MM-DD, reason: text }`);
+      blocked = null;
+    }
+    if (blocked && ['completed', 'cancelled'].includes(fm.status)) problems.push(`${fm.id} is ${fm.status} but still has a blocker`);
+    if (fm.status === 'blocked') warnings.push(`${fm.id} uses legacy status: blocked; recover its prior status from evidence before migrating`);
+    const delivery = fm.delivery ?? {};
+    if (typeof delivery !== 'object' || Array.isArray(delivery)) problems.push(`${fm.id} delivery must be an object with urls`);
+    let urls = delivery.urls ?? [];
+    if (!Array.isArray(urls)) { problems.push(`${fm.id} delivery.urls must be a list`); urls = []; }
+    if (delivery.url != null) urls = [...urls, delivery.url];
+    urls = [...new Set(urls)].filter((url) => {
+      try { if (typeof url === 'string' && ['http:', 'https:'].includes(new URL(url).protocol)) return true; } catch {}
+      problems.push(`${fm.id} has an invalid delivery URL`);
+      return false;
+    });
+    add({ id: String(fm.id), kind, slug, type: fm.type ?? null, blocked, delivery: urls, title: fm.title, status: fm.status, roadmap: fm.roadmap ? String(fm.roadmap) : null, phase: fm.phase == null ? null : String(fm.phase), feature: fm.feature ?? null, path });
     if (fm.feature) features.set(String(fm.feature), [...(features.get(String(fm.feature)) ?? []), String(fm.id)]);
   }
 
@@ -297,14 +323,14 @@ function readRecord(ctx) {
       else if (!items.has(`${item.roadmap}/${item.phase}`)) problems.push(`${item.id} names the phase ${item.phase}, which ${item.roadmap} does not have`);
     }
   }
-  return { items, problems };
+  return { items, problems, warnings };
 }
 
 function phases(text) {
   const found = [];
   const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
-    const heading = /^## Phase (\d+)\s*[—–-]\s*(.+)$/.exec(lines[i]);
+    const heading = /^## Phase(?: (\d+))?\s*[—–-]\s*(.+)$/.exec(lines[i]);
     if (!heading) continue;
     let status = null;
     let slug = null;
@@ -314,7 +340,7 @@ function phases(text) {
       const slugLine = /^\*\*Slug:\*\*\s*`?([^`\s]+)`?\s*$/.exec(lines[j]);
       if (slugLine) slug = slugLine[1];
     }
-    found.push({ n: Number(heading[1]), title: heading[2].trim(), status: status ?? 'proposed', slug });
+    found.push({ n: heading[1] ? Number(heading[1]) : found.length + 1, title: heading[2].trim(), status: status ?? 'proposed', slug });
   }
   return found;
 }
@@ -374,7 +400,7 @@ function readGitHub(gh, repo, items) {
 // ---------------------------------------------------------------------------------------------
 // What GitHub should show for each item.
 
-const kindLabels = (item) => ['siesta', `siesta:${item.kind}`];
+const kindLabels = (item) => ['siesta', `siesta:${item.kind}`, ...(item.blocked ? ['siesta:blocked'] : [])];
 const statusOf = (issue) => issue.labelNames.find((l) => l.startsWith('status:'))?.slice('status:'.length) ?? null;
 const closedBy = (status) => (status === 'completed' ? 'completed' : status === 'cancelled' ? 'not_planned' : null);
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
@@ -399,6 +425,16 @@ function body(ctx, item, numbers) {
   if (item.kind === 'feature') {
     const epics = item.epics.filter((id) => numbers.get(id)).sort().map((id) => `- #${numbers.get(id)}`);
     if (epics.length) parts.push(`Epics:\n\n${epics.join('\n')}`);
+  }
+  if (item.blocked) parts.push(`Blocked since ${item.blocked.since}: ${item.blocked.reason}`);
+  if (item.delivery?.length) {
+    const links = item.delivery.map((url) => {
+      const parsed = new URL(url);
+      const match = parsed.hostname === 'github.com' && parsed.pathname.match(/^\/([^/]+\/[^/]+)\/pull\/(\d+)$/);
+      const label = match ? (match[1] === ctx.repo ? `#${match[2]}` : `${match[1]}#${match[2]}`) : 'PR';
+      return `[${label}](<${parsed.href.replace(/>/g, '%3E')}>)`;
+    });
+    parts.push(`${item.status === 'completed' ? 'Delivered by' : 'Delivery PRs'}: ${links.join(', ')}`);
   }
   parts.push(note, marker(item.id));
   return parts.join('\n\n');
@@ -433,6 +469,7 @@ function compare(ctx, record, github) {
     }
     if (issue.title !== title(item)) differences.push(`title      ${item.id}  "${issue.title}" → "${title(item)}"`);
     if (!kindLabels(item).every((l) => issue.labelNames.includes(l))) differences.push(`labels     ${item.id}  lacks ${kindLabels(item).join(', ')}`);
+    if (issue.labelNames.includes('siesta:blocked') !== Boolean(item.blocked)) differences.push(`labels     ${item.id} blocker label differs`);
     if ((issue.body ?? '') !== body(ctx, item, numbers)) differences.push(`body       ${item.id}`);
     if (item.kind === 'feature') {
       const state = featureClosed(record, item) ? 'closed' : 'open';
@@ -453,19 +490,58 @@ function compare(ctx, record, github) {
   return differences;
 }
 
+function remoteBranches(ctx) {
+  return (tryGit(ctx.root, 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin') ?? '')
+    .split('\n').filter((b) => b && b !== 'origin/HEAD' && b !== 'origin' && b !== ctx.ref);
+}
+
+// These are observations only: never publish branch contents as the integration record.
+function branchDiagnostics(ctx, record, github) {
+  const warnings = [...record.warnings];
+  const pending = [];
+  const branches = remoteBranches(ctx);
+  for (const item of record.items.values()) {
+    if (!['epic', 'spike'].includes(item.kind) || ['completed', 'cancelled'].includes(item.status)) continue;
+    const base = show(ctx, ctx.ref, item.path);
+    const candidates = [];
+    for (const branch of branches) {
+      const text = show(ctx, branch, item.path);
+      let fm;
+      try { fm = frontmatter(text ?? ''); } catch (error) {
+        warnings.push(`${item.id} on ${branch} could not be inspected: ${error.message}`);
+        continue;
+      }
+      if (String(fm.id) !== item.id || !['active', 'blocked', 'completed'].includes(fm.status)) continue;
+      if (text === base && !branch.endsWith(`/${item.slug}`)) continue;
+      candidates.push(branch);
+      pending.push({ id: item.id, branch, status: fm.status, blocked: fm.blocked ?? null });
+    }
+    if ((item.status === 'active' || statusOf(github.issues.get(item.id) ?? { labelNames: [] }) === 'active') && !candidates.length) {
+      warnings.push(`${item.id} is active but no published worker branch was found; check its PR and assignment before restarting`);
+    }
+  }
+  return { warnings, pending };
+}
+
 function check(ctx, options) {
   const record = readRecord(ctx);
   const gh = makeGh(false);
-  const differences = compare(ctx, record, readGitHub(gh, ctx.repo, record.items));
-  if (options.json) console.log(JSON.stringify({ ref: ctx.ref, repo: ctx.repo, differences }, null, 2));
-  else if (differences.length === 0) console.log(`GitHub (${ctx.repo}) mirrors the plan on ${ctx.ref}.`);
-  else console.log(differences.join('\n'));
+  const github = readGitHub(gh, ctx.repo, record.items);
+  const differences = compare(ctx, record, github);
+  const { warnings, pending } = branchDiagnostics(ctx, record, github);
+  if (options.json) console.log(JSON.stringify({ ref: ctx.ref, repo: ctx.repo, differences, warnings, pending }, null, 2));
+  else {
+    console.log(differences.length ? differences.join('\n') : `GitHub (${ctx.repo}) mirrors the plan on ${ctx.ref}.`);
+    for (const warning of warnings) console.log(`warning    ${warning}`);
+    for (const item of pending) console.log(`pending    ${item.id} on ${item.branch}: ${item.status}${item.blocked ? ' (blocked)' : ''}; not merged`);
+  }
   return differences.length === 0 ? 0 : 1;
 }
 
 function publish(ctx, options) {
   const record = readRecord(ctx);
-  for (const problem of record.problems) console.log(`problem: ${problem}`);
+  if (record.problems.length) throw new Failure(record.problems.join('\n'));
+  for (const warning of record.warnings) console.log(`warning: ${warning}`);
   const gh = makeGh(options.dryRun);
   const github = readGitHub(gh, ctx.repo, record.items);
   const numbers = new Map([...github.issues].map(([id, issue]) => [id, issue.number]));
@@ -480,6 +556,7 @@ function publish(ctx, options) {
 
   const wantedLabels = new Set(['siesta', 'siesta:roadmap', 'siesta:epic', 'siesta:spike', 'siesta:feature']);
   for (const item of items('roadmap', 'epic', 'spike')) if (STATUSES.includes(item.status)) wantedLabels.add(`status:${item.status}`);
+  if (items('epic', 'spike').some((item) => item.blocked)) wantedLabels.add('siesta:blocked');
   for (const name of wantedLabels) {
     if (github.labels.has(name)) continue;
     send('POST', `repos/${ctx.repo}/labels`, { name, color: name.startsWith('status:') ? 'c5def5' : 'fbca04', description: 'Managed by Siesta' }, `create label ${name}`);
@@ -518,7 +595,7 @@ function publish(ctx, options) {
     const patch = {};
     if (issue.title !== title(item)) patch.title = title(item);
     if ((issue.body ?? '') !== wantedBody) patch.body = wantedBody;
-    const labels = [...new Set([...kindLabels(item), ...issue.labelNames])];
+    const labels = [...new Set([...kindLabels(item), ...issue.labelNames.filter((name) => name !== 'siesta:blocked')])];
     if (!sameSet(labels, issue.labelNames)) patch.labels = labels;
     if (extra.milestone !== undefined && issue.milestone?.number !== extra.milestone) patch.milestone = extra.milestone;
     if (item.kind === 'feature') {
@@ -557,6 +634,7 @@ function publish(ctx, options) {
 
 function setStatus(ctx, ids, wanted) {
   const record = readRecord(ctx);
+  if (record.problems.length) throw new Failure(record.problems.join('\n'));
   const gh = makeGh(false);
   const github = readGitHub(gh, ctx.repo, record.items);
   for (const id of ids) {
@@ -579,11 +657,13 @@ function start(ctx, id) {
   const record = readRecord(ctx);
   const item = record.items.get(id);
   if (!item || !['epic', 'spike'].includes(item.kind)) throw new Failure(`${id} is not an epic or spike on ${ctx.ref}`);
+  if (record.problems.length) throw new Failure(record.problems.join('\n'));
+  if (item.blocked) throw new Failure(`${id} is blocked since ${item.blocked.since}: ${item.blocked.reason}`);
   if (item.status !== 'planned') throw new Failure(`${id} is ${item.status} on ${ctx.ref}; only a planned epic starts`);
-  const branches = (tryGit(ctx.root, 'for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin') ?? '')
-    .split('\n')
-    .filter((b) => b && b !== 'origin/HEAD' && b !== 'origin' && b !== ctx.ref);
-  const started = branches.find((b) => frontmatter(show(ctx, b, item.path) ?? '').status === 'active');
+  const started = remoteBranches(ctx).find((b) => {
+    const fm = frontmatter(show(ctx, b, item.path) ?? '');
+    return String(fm.id) === id && fm.status === 'active' && !fm.blocked;
+  });
   if (!started) throw new Failure(`no branch on origin has ${id} active: push the epic's branch, with its spec set to active, first`);
   console.log(`${id} is active on ${started}`);
   return setStatus(ctx, [id], 'active');

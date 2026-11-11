@@ -44,12 +44,13 @@ The second half lets the session stop while it waits for the human.
    - a pull request is ready: review it with `siesta-review`, as the lead;
    - a review has closed: merge it with `siesta-merge`;
    - one of your own pull requests only records, as `siesta-merge` says: merge it with that skill, without a review round;
+   - a blocker is resolved: have its author clear `blocked` in the spec and report, then resume its existing stage;
    - a worker waits for you: answer it;
    - a worker's session ended before its work did: reconcile its assignment and apply the no-progress rule below before resuming it with `siesta-launch-worker`.
 3. **Start new epics.** Reconcile the worker assignments as `siesta-launch-worker` says; specs on integration alone do not show all occupied slots. In the roadmap's order, start each planned epic and spike of an accepted phase that can start, with `siesta-launch-worker`, while slots are free. A spike whose verdict other epics wait for goes first.
 4. **Carry what waits for the human** to the checkpoint with `siesta-checkpoint`: the workers' questions, approvals and hypotheses, and your own.
 5. **Close a phase.** When all its epics are completed, verify each of its completion criteria yourself, on the integration branch or in what it deploys.
-   - When they hold, record them as checked, and the phase as `completed`, in a pull request that only records.
+   - When they hold, record them as checked, and the phase as `completed on YYYY-MM-DD: criteria verified on <branch or environment> at <commit>`, citing the actual verified commit and any external evidence, in a pull request that only records.
    - When one does not hold, find out why and plan the fix with `siesta-plan`. A new epic starts `proposed` and waits for the human.
    - Then, if the next phase is accepted, go on with it. If it is proposed, its acceptance is a checkpoint question.
 6. **Close the roadmap.** When every phase is `completed`, and nothing in the checkpoint can add work to the roadmap:
@@ -63,7 +64,7 @@ The second half lets the session stop while it waits for the human.
 
 ## No progress
 
-Record a failed operation or ended session, its cause, the last concrete progress and its retry in the existing state and worker report. One retry without a relevant change or new evidence is enough. If the same failure recurs without progress, mark the assignment blocked, put the cause and what would unblock it in the checkpoint, and continue independent epics. Keep the assignment counted toward the parallel limit until it is resolved; do not fill its slot by silently replacing it. Resume only when the cause changes or new evidence gives a different recovery step, not merely because another loop or session started. A normal session ending after progress does not count as the same failure.
+Record a failed operation or ended session, its cause, the last concrete progress and its retry in the existing state and worker report. One retry without a relevant change or new evidence is enough. If the same failure recurs without progress, record `blocked: { since: YYYY-MM-DD, reason: ... }` in the spec through its author, retaining its lifecycle status, mark the assignment blocked in the log, put the cause and what would unblock it in the checkpoint, and continue independent epics. Keep the assignment counted toward the parallel limit until it is resolved; do not fill its slot by silently replacing it. Resume only when the cause changes or new evidence gives a different recovery step, not merely because another loop or session started. A normal session ending after progress does not count as the same failure.
 
 ## Effort
 

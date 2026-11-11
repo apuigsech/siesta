@@ -29,9 +29,17 @@ Write statuses with these words, in the epic's frontmatter and in the roadmap's 
 | `proposed` | Written, not accepted | The planner |
 | `planned` | Its phase was accepted | The planner, after the human's yes |
 | `active` | A worker is on it | The project manager |
-| `blocked` | It waits for something outside the plan; the spec says what | Whoever finds it |
 | `completed` | Its acceptance criteria are verified, in its last pull request | Its worker |
 | `cancelled` | Dropped; the spec says why, and it stays | The planner, after the human's yes |
+
+Blocking is separate from lifecycle status: `blocked: null`, or `blocked: { since: YYYY-MM-DD, reason: "what prevents progress and what unblocks it" }`. Keep the status (`planned`, `active`, etc.) while blocked; preserve `since` until that blocker is resolved. Clear the field when it is resolved, and before completion or cancellation. Whoever finds the blocker records it in the spec and report; for an unstarted epic, the PM records it through a plan PR. Do not duplicate ordinary `depends_on` or `waits_for` entries as manual blockers. A worker with a blocker works only on independent steps and does not merge its delivery until the blocker is cleared.
+
+Legacy `status: blocked` remains readable by the sync add-on. Before resuming, recover the prior status from history or the assignment, and move the blocker to the field. If the prior status or date is unknown, ask instead of inventing it. Do not automatically migrate historical specs.
+
+Optional epic and spike fields:
+- `delivery.urls`: the pull-request URLs contributing to the delivery, in order. An older `delivery.url` is also read; when editing it, carry its value into the list without losing any links. The worker records each URL before review. Only completed epics on integration are described as delivered.
+- `type`: a lowercase Conventional Commits type such as `feat`, `fix`, `test` or `docs`; absent or null means infer it from the work. With `naming.commits: conventional`, use it for the branch's `{type}` and the delivery PR title. Individual commits describe their own changes. With `free`, it does not constrain titles or messages.
+- `slug`: optional for custom IDs; otherwise use the id with a leading `YYYYMMDD-` removed. It is lowercase words joined by hyphens. Epics and spikes not yet completed or cancelled must have distinct slugs across roadmaps, since their worktrees use that name. Before launch, also check actual branch and worktree destinations against existing assignments and resources; never overwrite or reuse another epic's resources. Historical slugs can be reused once their resources are gone.
 
 A phase is `proposed` until the human accepts it, then `accepted` with the date and their words, and `completed` when its completion criteria hold. A roadmap is `proposed` until its first phase is accepted, then `active`, and `completed` when every phase is completed and the human says it is done, with the date and their words.
 
@@ -41,7 +49,7 @@ Read the product, the architecture, the features and their designs, the decision
 
 ## 2. Draft
 
-- **Phases** deliver something the human can see working. Each has an outcome and completion criteria anyone can check. Each has a slug, lowercase words joined by hyphens and unique in its roadmap, that epics and spikes name in their `phase`. The number in its heading only orders the phases: renumbering or retitling a phase never changes its slug.
+- **Phases** deliver something the human can see working. Each has an outcome and completion criteria anyone can check. Each has a slug, lowercase words joined by hyphens and unique in its roadmap, that epics and spikes name in their `phase`. Write `## Phase — <title>`; the older numbered form remains valid. Document order orders the phases. Keep existing headings and links unless asked to change them; renumbering or retitling a phase never changes its slug.
 - **Epics** are one worker's work, reviewed in one pull request or a few, and as independent as their dependencies allow. Their acceptance criteria are checkboxes someone can verify. Carry each settled requirement exactly as its source says it, and name the source: a decision's id, the feature, the architecture.
 - `touches` names the parts of the architecture an epic changes, so that epics that touch different parts can run at the same time.
 - `feature` names the feature document an epic builds, by the name in `paths.feature`; `null` when it builds none.

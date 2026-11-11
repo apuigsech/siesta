@@ -18,6 +18,7 @@ A new epic or spike starts when all of these hold:
 
 - on the integration branch, its phase is accepted and its status is `planned`, and it has no existing assignment;
 - every epic in its `depends_on` is `completed` on the integration branch;
+- its `blocked` field is empty, and it has no unresolved legacy `status: blocked`;
 - every open question in its `waits_for` is answered;
 - what its spec's "Waits for the human" needs before work begins, such as an account, is there;
 - the reconciled assignments leave a free slot, and with `parallel_when: disjoint-files`, its `touches` share nothing with an assigned epic's.
@@ -25,6 +26,8 @@ A new epic or spike starts when all of these hold:
 Always start from the integration branch. A reviewed dependency that has not merged is still a dependency to wait for.
 
 ## 2. The worktree and the branch
+
+Resolve the slug and optional type as `siesta-plan` says, then expand the configured branch and worktree path. Check live specs for duplicate slugs and actual local/remote branches and registered/on-disk worktrees for occupied destinations. Resume only an assignment verified to belong to this epic; otherwise report the collision before creating or pushing anything. An inferred type stays in the brief for this assignment, even if later work changes its mix.
 
 From the main checkout, after fetching:
 
