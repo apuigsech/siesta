@@ -501,3 +501,125 @@ test('malformed unmerged branch metadata produces warnings without failing the m
   assert.ok(JSON.parse(result.out).warnings.some((x) => x.includes('could not be inspected')));
   assert.equal(github().writes.length, writes);
 });
+
+// Changes GitHub behind the script's back, as a person or another writer would.
+function editGitHub(statePath, change) {
+  const state = JSON.parse(readFileSync(statePath, 'utf8'));
+  change(state);
+  writeFileSync(statePath, JSON.stringify(state, null, 2));
+}
+
+test('status and start honour --dry-run: they print what they would change and write nothing (#14)', () => {
+  const { dir, run, github, statePath } = setup();
+  run('publish');
+  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 'preview' }) });
+  commitAndPush(dir, 'complete');
+  const writes = github().writes.length;
+  const dry = run('status', '20261030-checks-pass', '--dry-run');
+  assert.equal(dry.code, 0, dry.err);
+  assert.match(dry.out, /would set 20261030-checks-pass to completed/);
+  assert.equal(github().writes.length, writes, 'a dry status writes nothing');
+
+  const fresh = setup();
+  fresh.run('publish');
+  git(fresh.dir, 'checkout', '-q', '-b', 'chore/checks-pass');
+  writeFiles(fresh.dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'active', phase: 'preview' }) });
+  commitAndPush(fresh.dir, 'start', 'chore/checks-pass');
+  const before = fresh.github().writes.length;
+  const started = fresh.run('start', '20261030-checks-pass', '--dry-run');
+  assert.equal(started.code, 0, started.err);
+  assert.match(started.out, /would set 20261030-checks-pass to active/);
+  assert.equal(fresh.github().writes.length, before, 'a dry start writes nothing');
+  assert.ok(statePath);
+});
+
+test('an explicit status restores the record exactly: planned over active, and the closing reason (#15)', () => {
+  const { dir, run, github, statePath } = setup();
+  run('publish');
+  const epic = issueFor(github(), '20261030-checks-pass');
+  editGitHub(statePath, (state) => {
+    state.issues.find((i) => i.number === epic.number).labels = ['siesta', 'siesta:epic', 'status:active'];
+  });
+  assert.equal(run('status', '20261030-checks-pass').code, 0);
+  assert.deepEqual(labelsOf(issueFor(github(), '20261030-checks-pass')), ['siesta', 'siesta:epic', 'status:planned'], 'an explicit status undoes a wrong start');
+
+  writeFiles(dir, { '.siesta/epics/20261030-checks-pass/spec.md': spec({ id: '20261030-checks-pass', title: 'The checks pass', status: 'completed', phase: 'preview' }) });
+  commitAndPush(dir, 'complete');
+  run('status', '20261030-checks-pass');
+  editGitHub(statePath, (state) => {
+    state.issues.find((i) => i.number === epic.number).state_reason = 'not_planned';
+  });
+  const { code, out } = run('check');
+  assert.equal(code, 1);
+  assert.match(out, /status.*20261030-checks-pass.*closed as not_planned/, 'check reports a wrong closing reason');
+  run('status', '20261030-checks-pass');
+  assert.equal(issueFor(github(), '20261030-checks-pass').state_reason, 'completed');
+  assert.equal(run('check').code, 0);
+});
+
+test('check reports an id that two issues or two milestones carry, and the writers refuse it (#16)', () => {
+  const { run, github, statePath } = setup();
+  run('publish');
+  const epic = issueFor(github(), '20261030-checks-pass');
+  editGitHub(statePath, (state) => {
+    state.issues.push({ ...structuredClone(state.issues.find((i) => i.number === epic.number)), number: 99, id: 9999 });
+    const milestone = state.milestones.find((m) => m.description.includes('20261030-open-the-shop/preview'));
+    state.milestones.push({ ...milestone, number: 98, title: 'Old name' });
+  });
+  const { code, out } = run('check');
+  assert.equal(code, 1);
+  assert.match(out, new RegExp(`problem.*20261030-checks-pass is carried by 2 issues: #${epic.number}, #99`));
+  assert.match(out, /problem.*20261030-open-the-shop\/preview is carried by 2 milestones/);
+  const writes = github().writes.length;
+  assert.equal(run('publish').code, 2);
+  assert.equal(run('status', '20261030-checks-pass').code, 2);
+  assert.equal(run('issue', '20261030-checks-pass').code, 2);
+  assert.equal(github().writes.length, writes, 'nothing is written for a duplicated id');
+});
+
+test('check reports an issue with two status labels or two kind labels, and publish removes the stale kind (#17)', () => {
+  const { run, github, statePath } = setup();
+  run('publish');
+  const epic = issueFor(github(), '20261030-checks-pass');
+  editGitHub(statePath, (state) => {
+    state.issues.find((i) => i.number === epic.number).labels = ['siesta', 'siesta:epic', 'siesta:spike', 'status:planned', 'status:completed'];
+  });
+  const { code, out } = run('check');
+  assert.equal(code, 1);
+  assert.match(out, /labels.*20261030-checks-pass.*also has siesta:spike/);
+  assert.match(out, /labels.*20261030-checks-pass.*has 2 status labels/);
+  run('publish');
+  assert.deepEqual(labelsOf(issueFor(github(), '20261030-checks-pass')), ['siesta', 'siesta:epic', 'status:completed', 'status:planned'], 'publish leaves status labels to status');
+  run('status', '20261030-checks-pass');
+  assert.deepEqual(labelsOf(issueFor(github(), '20261030-checks-pass')), ['siesta', 'siesta:epic', 'status:planned']);
+  assert.equal(run('check').code, 0);
+});
+
+test('publish adds and removes labels one by one, so it never writes back a status another writer set (#18)', () => {
+  const { run, github, statePath } = setup();
+  run('publish');
+  const epic = issueFor(github(), '20261030-checks-pass');
+  editGitHub(statePath, (state) => {
+    // A person removed the kind label, and another writer has since set the status.
+    state.issues.find((i) => i.number === epic.number).labels = ['siesta', 'status:active'];
+  });
+  run('publish');
+  const after = issueFor(github(), '20261030-checks-pass');
+  assert.deepEqual(labelsOf(after), ['siesta', 'siesta:epic', 'status:active']);
+  const labelWrites = github().writes.filter((w) => w.path.includes(`/issues/${epic.number}`) && (w.body.labels || w.method === 'DELETE'));
+  assert.ok(labelWrites.every((w) => w.method !== 'PATCH'), 'no label set is replaced');
+  assert.ok(labelWrites.every((w) => !(w.body.labels ?? []).some((l) => l.startsWith('status:'))), 'publish writes no status label');
+});
+
+test('a phase without its Status line, or with another word, is a problem and stops publish (#19)', () => {
+  const noStatus = ROADMAP.replace('**Status:** proposed\n\n', '');
+  const { run, github } = setup({ ...FILES, '.siesta/roadmaps/20261030-open-the-shop.md': noStatus });
+  const { code, out } = run('check');
+  assert.equal(code, 1);
+  assert.match(out, /problem.*phase returns of 20261030-open-the-shop has no \*\*Status:\*\* line/);
+  assert.equal(run('publish').code, 2);
+  assert.equal(github()?.writes.length ?? 0, 0);
+
+  const odd = setup({ ...FILES, '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP.replace('**Status:** proposed', '**Status:** done') });
+  assert.match(odd.run('check').out, /phase returns of 20261030-open-the-shop has the status "done"/);
+});
