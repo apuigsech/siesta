@@ -12,6 +12,8 @@ Builds on: <links to the product, the architecture, the features and the decisio
 
 ## Phase 1 — <Phase title>
 
+**Slug:** <phase-slug>
+
 **Status:** proposed
 
 <What the human can see working at the end of the phase.>

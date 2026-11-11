@@ -15,7 +15,7 @@ argument-hint: "[check | publish]"
 | In the repository | In GitHub |
 |---|---|
 | A roadmap | An issue labelled `siesta:roadmap`, titled `<title> [<id>]` |
-| A phase | A milestone titled `<roadmap title>: <phase title>`, closed once the phase is completed |
+| A phase | A milestone titled `<roadmap title>: <phase title>`, paired with the phase by `<roadmap id>/<phase slug>`, closed once the phase is completed |
 | An epic or a spike | An issue labelled `siesta:epic` or `siesta:spike`, a sub-issue of its roadmap's issue, in its phase's milestone |
 | A feature an epic names in its `feature` key | An issue labelled `siesta:feature`, linked from its epics and listing them, closed once they are all completed or cancelled |
 | A status | A label `status:<status>`. `completed` closes the issue as completed, `cancelled` as not planned |
@@ -51,7 +51,7 @@ When a skill needs `{issue}` for a naming template, such as a session's title or
 - **`missing`, `title`, `labels`, `body`, `milestone`, `parent`:** `publish` fixes them.
 - **`status`:** find out why before changing anything. When a merge changed the item's file, run `status` for it. When someone changed the status in GitHub by hand, put it to the human as a checkpoint question; the record wins only once they say so.
 - **`not in the record`:** an issue whose id left the integration branch. An epic dropped from the plan stays in it as `cancelled`, so this is usually a mistake in the plan. Leave the issue as it is and tell the human.
-- **`problem`:** the record itself is wrong, such as an epic naming a phase its roadmap lacks. Fix the record in a pull request.
+- **`problem`:** the record itself is wrong, such as an epic naming a phase slug its roadmap lacks, or a phase with no slug. Fix the record in a pull request.
 
 ## Authority and failure
 

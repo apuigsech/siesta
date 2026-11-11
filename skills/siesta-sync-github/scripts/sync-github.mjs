@@ -29,6 +29,7 @@ export const DEFAULTS = {
 
 const STATUSES = ['proposed', 'planned', 'active', 'blocked', 'completed', 'cancelled'];
 const MARKER = /<!-- siesta-id: (.+?) -->/;
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const marker = (id) => `<!-- siesta-id: ${id} -->`;
 
 class Failure extends Error {}
@@ -257,7 +258,11 @@ function readRecord(ctx) {
     }
     add({ id: String(fm.id), kind: 'roadmap', title: fm.title, status: fm.status, path });
     for (const phase of phases(text)) {
-      add({ id: `${fm.id}/phase-${phase.n}`, kind: 'phase', title: `${fm.title}: ${phase.title}`, status: phase.status, roadmap: String(fm.id), n: phase.n });
+      if (!SLUG.test(phase.slug ?? '')) {
+        problems.push(`phase ${phase.n} of ${fm.id} has ${phase.slug ? `the slug "${phase.slug}", which is not lowercase words joined by hyphens` : 'no slug'}`);
+        continue;
+      }
+      add({ id: `${fm.id}/${phase.slug}`, kind: 'phase', title: `${fm.title}: ${phase.title}`, status: phase.status, roadmap: String(fm.id), slug: phase.slug });
     }
   }
 
@@ -269,7 +274,7 @@ function readRecord(ctx) {
       continue;
     }
     const kind = fm.kind === 'spike' ? 'spike' : 'epic';
-    add({ id: String(fm.id), kind, title: fm.title, status: fm.status, roadmap: fm.roadmap ? String(fm.roadmap) : null, phase: fm.phase, feature: fm.feature ?? null, path });
+    add({ id: String(fm.id), kind, title: fm.title, status: fm.status, roadmap: fm.roadmap ? String(fm.roadmap) : null, phase: fm.phase == null ? null : String(fm.phase), feature: fm.feature ?? null, path });
     if (fm.feature) features.set(String(fm.feature), [...(features.get(String(fm.feature)) ?? []), String(fm.id)]);
   }
 
@@ -287,7 +292,7 @@ function readRecord(ctx) {
     }
     if (item.kind === 'epic' || item.kind === 'spike') {
       if (!items.has(item.roadmap)) problems.push(`${item.id} names the roadmap ${item.roadmap}, which is not on ${ctx.ref}`);
-      else if (!items.has(`${item.roadmap}/phase-${item.phase}`)) problems.push(`${item.id} names phase ${item.phase}, which ${item.roadmap} does not have`);
+      else if (!items.has(`${item.roadmap}/${item.phase}`)) problems.push(`${item.id} names the phase ${item.phase}, which ${item.roadmap} does not have`);
     }
   }
   return { items, problems };
@@ -299,15 +304,15 @@ function phases(text) {
   for (let i = 0; i < lines.length; i++) {
     const heading = /^## Phase (\d+)\s*[—–-]\s*(.+)$/.exec(lines[i]);
     if (!heading) continue;
-    let status = 'proposed';
+    let status = null;
+    let slug = null;
     for (let j = i + 1; j < lines.length && !lines[j].startsWith('## '); j++) {
-      const line = /^\*\*Status:\*\*\s*([A-Za-z]+)/.exec(lines[j]);
-      if (line) {
-        status = line[1].toLowerCase();
-        break;
-      }
+      const statusLine = /^\*\*Status:\*\*\s*([A-Za-z]+)/.exec(lines[j]);
+      if (statusLine && status === null) status = statusLine[1].toLowerCase();
+      const slugLine = /^\*\*Slug:\*\*\s*`?([^`\s]+)`?\s*$/.exec(lines[j]);
+      if (slugLine) slug = slugLine[1];
     }
-    found.push({ n: Number(heading[1]), title: heading[2].trim(), status });
+    found.push({ n: Number(heading[1]), title: heading[2].trim(), status: status ?? 'proposed', slug });
   }
   return found;
 }
@@ -436,7 +441,7 @@ function compare(ctx, record, github) {
     const stateFits = (issue.state === 'closed') === Boolean(closedBy(item.status)) || (status === 'active' && item.status === 'planned' && issue.state === 'open');
     if (!inStep(status, item.status) || !stateFits) differences.push(`status     ${item.id}  GitHub: ${status ?? 'none'} (${issue.state})  record: ${item.status}`);
     if (item.kind === 'epic' || item.kind === 'spike') {
-      const milestone = github.milestones.get(`${item.roadmap}/phase-${item.phase}`);
+      const milestone = github.milestones.get(`${item.roadmap}/${item.phase}`);
       if (milestone && issue.milestone?.number !== milestone.number) differences.push(`milestone  ${item.id}  not in ${milestone.title}`);
       const parent = github.issues.get(item.roadmap);
       if (parent && github.parents.get(issue.number) !== parent.number) differences.push(`parent     ${item.id}  not a sub-issue of #${parent.number}`);
@@ -528,7 +533,7 @@ function publish(ctx, options) {
   for (const item of items('roadmap')) upsert(item);
   for (const item of items('feature')) upsert(item);
   for (const item of items('epic', 'spike')) {
-    const milestone = github.milestones.get(`${item.roadmap}/phase-${item.phase}`);
+    const milestone = github.milestones.get(`${item.roadmap}/${item.phase}`);
     const issue = upsert(item, milestone ? { milestone: milestone.number } : {});
     const parent = github.issues.get(item.roadmap);
     if (parent && github.parents.get(issue.number) !== parent.number) {
