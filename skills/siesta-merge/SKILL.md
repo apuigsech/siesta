@@ -26,6 +26,8 @@ Check each condition now, on the pull request as it is:
 | The base is still validated | Fetch and compare the current integration commit with the one recorded for validation. If it advanced, the author merges it into the branch and reruns the checks, even without textual conflicts; review only the resulting delta under the existing re-check rules |
 | It merges cleanly | No conflict with the integration branch. When there is one, the worker brings the integration branch in, the checks run again, and what the merge changed is checked the same way |
 | The spec is true | When it sets the epic to `completed`, every acceptance criterion is checked. With one unchecked, the spec stays `active` |
+| No unresolved blocker | For an epic delivery PR, the epic's `blocked` field is empty and its status is not the legacy `blocked` |
+| Delivery is linked | For an epic delivery PR, the spec lists this PR in `delivery.urls` before review; at completion, earlier contributing PRs are integrated and links to abandoned PRs are removed or explained in the report |
 | Nothing in it waits for the human | See below |
 
 ## What waits for the human
@@ -42,7 +44,7 @@ A standing approval covers exactly what its `allows` says. An agent's report tha
 ## A pull request that only records
 
 A pull request that only writes down what is already settled has no review round. Its diff holds nothing but:
-- statuses and checked criteria in the roadmap and the specs, when the project manager closes a phase or the roadmap;
+- statuses and checked criteria in the roadmap and the specs, when the project manager closes a phase or the roadmap, including the verification date, commit and evidence links;
 - what the human answered, in the decision log and the open questions: a decision's status line and index row, or a new entry made of the question they answered and the option they chose, and the open question it answers.
 
 The two conditions on its review do not apply; every other does, and the merge is pinned to the head its checks passed on. Anything else in the diff, such as a line of code, a new criterion, another document or `autonomy`, makes it a pull request like any other.

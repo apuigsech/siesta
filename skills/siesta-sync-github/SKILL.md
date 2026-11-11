@@ -18,6 +18,8 @@ argument-hint: "[check | publish]"
 | A phase | A milestone titled `<roadmap title>: <phase title>`, paired with the phase by `<roadmap id>/<phase slug>`, closed once the phase is completed |
 | An epic or a spike | An issue labelled `siesta:epic` or `siesta:spike`, a sub-issue of its roadmap's issue, in its phase's milestone |
 | A feature an epic names in its `feature` key | An issue labelled `siesta:feature`, linked from its epics and listing them, closed once they are all completed or cancelled |
+| A blocker | `siesta:blocked`, plus its date and reason in the body; the lifecycle label stays |
+| Delivery URLs | `Delivered by` links for completed epics; `Delivery PRs` while in progress |
 | A status | A label `status:<status>`. `completed` closes the issue as completed, `cancelled` as not planned |
 
 Each issue's body ends with `<!-- siesta-id: <id> -->`, which pairs it with its file: a title may change, the marker may not. Every issue also carries the label `siesta`.
@@ -28,13 +30,17 @@ Run the repository's copy, `.siesta/addons/sync-github.mjs`, when it exists, so 
 
 | Command | Does | Exit |
 |---|---|---|
-| `node <script> check` | Compares GitHub with the plan and changes nothing | 0 in step, 1 a difference, 2 cannot run |
+| `node <script> check` | Compares GitHub with the plan; reports advisory branch observations; changes nothing | 0 in step, 1 a difference, 2 cannot run |
 | `node <script> publish [--dry-run]` | Creates what is missing and fixes titles, bodies, labels, milestones and parents; leaves the statuses of existing issues alone | 0, or 2 |
 | `node <script> status <id>...` | Sets those items' statuses from the record | 0, or 2 |
 | `node <script> start <id>` | Marks a planned epic active, once a branch on origin has its spec set to `active` | 0, or 2 |
 | `node <script> issue <id>` | Prints the item's issue number | 0, or 2 |
 
 The script reads the integration branch on origin, after fetching it, and never the working tree: what is not merged is not published.
+
+`check --json` separates `differences` (exit 1) from `warnings` and `pending` branch observations (no effect on the exit code). It fetches with pruning, reports active epics with no published worker branch, and lists branch progress without publishing it. Completed or cancelled epics on integration are excluded: a merged PR may have had its branch deleted normally. An absent branch is a diagnostic to investigate, not permission to restart or a claim that code was lost. Matching uses the spec identity and changed progress, or the conventional branch slug; custom branch layouts may need the PM to resolve an advisory warning.
+
+`status: blocked` is read for compatibility and reported as a migration warning. New specs keep their lifecycle status and use `blocked: null` or `{ since, reason }`. `publish` mirrors this field independently of lifecycle status. Numbered and unnumbered phase headings are accepted; phase identity still comes from its slug. The script reports duplicate live epic slugs and malformed metadata, and refuses writes when the integration record has these problems. Actual destination occupancy is also checked by the launcher, which has the effective naming configuration and local worktrees.
 
 ## Moments
 

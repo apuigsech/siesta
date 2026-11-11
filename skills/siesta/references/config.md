@@ -80,9 +80,9 @@ The templates in `naming` and the document paths in `paths` take these placehold
 | Placeholder | Is |
 |---|---|
 | `{date}` | Today, as `YYYYMMDD` |
-| `{slug}` | The item's short name, lowercase with hyphens |
+| `{slug}` | The item's short name, lowercase with hyphens; an epic's optional `slug`, or its id with the leading `YYYYMMDD-` removed |
 | `{title}` | The item's title |
-| `{type}` | A Conventional Commits type, such as `feat` or `fix` |
+| `{type}` | The epic's optional Conventional Commits `type`, otherwise inferred at launch and recorded in the brief |
 | `{n}` | The next free number; `{n:03}` pads it to three digits |
 | `{issue}` | The item's issue number, only when a sync add-on is configured: its skill says how to get it |
 | `{repo}` | The repository as `owner/name` from its `origin` remote, or its folder's name |

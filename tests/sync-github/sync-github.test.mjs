@@ -62,7 +62,7 @@ Completion criteria:
 - [ ] Returns work.
 `;
 
-const spec = ({ id, title, kind = 'epic', status, phase, feature }) => `---
+const spec = ({ id, title, kind = 'epic', status, phase, feature, extra = '' }) => `---
 id: ${id}
 title: ${title}
 kind: ${kind}
@@ -72,7 +72,7 @@ phase: ${phase}
 depends_on: []
 waits_for: [OQ-02]
 touches: [orders, payments]
-${feature ? `feature: ${feature}\n` : ''}---
+${feature ? `feature: ${feature}\n` : ''}${extra}---
 
 # ${title}
 
@@ -123,7 +123,7 @@ function setup(files = FILES) {
     return { code: result.status, out: result.stdout, err: result.stderr };
   };
   const github = () => (existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : null);
-  return { dir, run, github };
+  return { dir, run, github, statePath };
 }
 
 const issueFor = (github, id) => github.issues.find((i) => i.body.includes(`<!-- siesta-id: ${id} -->`));
@@ -343,4 +343,161 @@ test('parseYaml reads flow maps, block lists, lists of maps, quotes and comments
   assert.equal(config.autonomy.standing_approvals[0].allows, "Delete the previews of the epic's own branch");
   assert.equal(config.addons['sync-github'].repo, 'acme/shop');
   assert.deepEqual(parseYaml('a: []\nb: [x, "y, z"]\nc: null\nd: 3\n'), { a: [], b: ['x', 'y, z'], c: null, d: 3 });
+});
+
+const CHECKS_ID = '20261030-checks-pass';
+const CHECKS_PATH = `.siesta/epics/${CHECKS_ID}/spec.md`;
+const checksSpec = (status, extra = '') => spec({ id: CHECKS_ID, title: 'The checks pass', status, phase: 'preview', extra });
+
+test('delivery links preserve legacy and multiple PRs, and only completed work says delivered', () => {
+  const extra = 'delivery:\n  url: https://github.com/acme/shop/pull/27\n  urls: [https://github.com/acme/shop/pull/28, https://github.com/acme/other/pull/3]\n';
+  const { dir, run, github } = setup({ ...FILES, [CHECKS_PATH]: checksSpec('active', extra) });
+  assert.equal(run('publish').code, 0);
+  let body = issueFor(github(), CHECKS_ID).body;
+  assert.match(body, /Delivery PRs:/);
+  assert.doesNotMatch(body, /Delivered by/);
+  for (const label of ['#27', '#28', 'acme/other#3']) assert.ok(body.includes(`[${label}]`));
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('completed', extra) });
+  commitAndPush(dir, 'deliver');
+  assert.equal(run('publish').code, 0);
+  assert.match(issueFor(github(), CHECKS_ID).body, /Delivered by:/);
+  assert.equal(run('status', CHECKS_ID).code, 0);
+  assert.equal(run('check').code, 0);
+});
+
+test('blocked metadata preserves lifecycle, prevents start, and clears independently', () => {
+  const extra = 'blocked: { since: 2026-11-11, reason: Waiting for access }\ntype: test\n';
+  const { dir, run, github } = setup({ ...FILES, [CHECKS_PATH]: checksSpec('planned', extra) });
+  assert.equal(run('publish').code, 0);
+  let issue = issueFor(github(), CHECKS_ID);
+  assert.ok(issue.labels.includes('status:planned'));
+  assert.ok(issue.labels.includes('siesta:blocked'));
+  assert.match(issue.body, /Blocked since 2026-11-11: Waiting for access/);
+  assert.equal(run('start', CHECKS_ID).code, 2);
+  assert.equal(run('check').code, 0);
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('planned', 'blocked: null\ntype: test\n') });
+  commitAndPush(dir, 'access available');
+  assert.match(run('check').out, /blocker label differs/);
+  assert.equal(run('publish').code, 0);
+  issue = issueFor(github(), CHECKS_ID);
+  assert.ok(issue.labels.includes('status:planned'));
+  assert.ok(!issue.labels.includes('siesta:blocked'));
+  assert.doesNotMatch(issue.body, /Blocked since/);
+  assert.equal(run('check').code, 0);
+});
+
+test('legacy blocked status is preserved with an advisory migration warning', () => {
+  const { run, github } = setup({ ...FILES, [CHECKS_PATH]: checksSpec('blocked') });
+  assert.equal(run('publish').code, 0);
+  const result = run('check', '--json');
+  assert.equal(result.code, 0);
+  const data = JSON.parse(result.out);
+  assert.ok(data.warnings.some((x) => x.includes('legacy status: blocked')));
+  assert.ok(issueFor(github(), CHECKS_ID).labels.includes('status:blocked'));
+  assert.equal(run('start', CHECKS_ID).code, 2);
+});
+
+test('unnumbered phases preserve milestones and accept closure evidence', () => {
+  const { dir, run, github } = setup();
+  run('publish');
+  const before = github().milestones.map((m) => m.number);
+  writeFiles(dir, { '.siesta/roadmaps/20261030-open-the-shop.md': ROADMAP
+    .replace('## Phase 1 —', '## Phase —')
+    .replace('## Phase 2 —', '## Phase —')
+    .replace('**Status:** accepted on 2026-10-30 by the owner: "Sí".', '**Status:** Completed on 2026-11-11: criteria verified on main at abc123.') });
+  commitAndPush(dir, 'unnumbered phases');
+  assert.equal(run('publish').code, 0);
+  assert.deepEqual(github().milestones.map((m) => m.number), before);
+  assert.equal(github().milestones[0].state, 'closed');
+  assert.equal(run('check').code, 0);
+});
+
+test('live slug collisions block writes, while completed historical slugs may be reused', () => {
+  const otherPath = '.siesta/epics/20261111-checks-pass/spec.md';
+  const other = spec({ id: '20261111-checks-pass', title: 'More checks', status: 'planned', phase: 'preview' });
+  const { dir, run, github } = setup({ ...FILES, [otherPath]: other });
+  assert.match(run('check').out, /share the live slug checks-pass/);
+  assert.equal(run('publish').code, 2);
+  assert.equal(github()?.writes.length ?? 0, 0);
+  assert.equal(run('start', CHECKS_ID).code, 2);
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('completed') });
+  commitAndPush(dir, 'old epic done');
+  assert.equal(run('publish').code, 0);
+  assert.equal(run('check').code, 0);
+});
+
+test('custom slugs are checked across epics and spikes irrespective of commit type', () => {
+  const custom = spec({ id: 'custom-id', title: 'Custom', kind: 'spike', status: 'planned', phase: 'preview', extra: 'slug: checks-pass\ntype: docs\n' });
+  const { run } = setup({ ...FILES, '.siesta/epics/custom-id/spec.md': custom });
+  assert.match(run('check').out, /share the live slug checks-pass/);
+  assert.equal(run('publish').code, 2);
+});
+
+test('malformed metadata is reported before any write', () => {
+  const { run, github } = setup({ ...FILES, [CHECKS_PATH]: checksSpec('completed', 'blocked: { since: yesterday, reason: 42 }\ntype: "../bad"\ndelivery:\n  urls: ["javascript:bad"]\n') });
+  const result = run('check');
+  assert.equal(result.code, 1);
+  assert.match(result.out, /blocked must/);
+  assert.match(result.out, /invalid commit type/);
+  assert.match(result.out, /invalid delivery URL/);
+  assert.equal(run('publish').code, 2);
+  assert.equal(run('status', CHECKS_ID).code, 2);
+  assert.equal(github()?.writes.length ?? 0, 0);
+});
+
+test('branch observations are advisory, read-only and survive branch progress to completed', () => {
+  const { dir, run, github } = setup();
+  run('publish');
+  git(dir, 'checkout', '-q', '-b', 'chore/checks-pass');
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('active') });
+  commitAndPush(dir, 'started', 'chore/checks-pass');
+  assert.equal(run('start', CHECKS_ID).code, 0);
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('completed') });
+  commitAndPush(dir, 'ready for review', 'chore/checks-pass');
+  let result = run('check', '--json');
+  assert.equal(result.code, 0);
+  let data = JSON.parse(result.out);
+  assert.equal(data.warnings.length, 0);
+  assert.ok(data.pending.some((x) => x.id === CHECKS_ID && x.status === 'completed'));
+  assert.ok(issueFor(github(), CHECKS_ID).labels.includes('status:active'));
+  git(dir, 'checkout', '-q', 'main');
+  git(dir, 'push', '-q', 'origin', '--delete', 'chore/checks-pass');
+  const writes = github().writes.length;
+  result = run('check', '--json');
+  assert.equal(result.code, 0, result.err);
+  data = JSON.parse(result.out);
+  assert.ok(data.warnings.some((x) => x.includes('no published worker branch')));
+  assert.equal(data.pending.length, 0);
+  assert.equal(github().writes.length, writes);
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('completed') });
+  commitAndPush(dir, 'delivered');
+  data = JSON.parse(run('check', '--json').out);
+  assert.equal(data.warnings.length, 0, 'a merged final PR may have its branch deleted before sync');
+});
+
+test('a completed epic cannot retain a blocker, and explicit slugs support custom IDs', () => {
+  const { dir, run, github } = setup({ ...FILES, [CHECKS_PATH]: checksSpec('completed', 'blocked: { since: 2026-11-11, reason: Still waiting }\n') });
+  assert.match(run('check').out, /completed but still has a blocker/);
+  assert.equal(run('publish').code, 2);
+  assert.equal(github()?.writes.length ?? 0, 0);
+  writeFiles(dir, { [CHECKS_PATH]: spec({ id: 'OPS_42', title: 'Operations', status: 'planned', phase: 'preview', extra: 'slug: operations\ntype: chore\n' }) });
+  commitAndPush(dir, 'custom identity');
+  assert.equal(run('publish').code, 0);
+  assert.equal(run('check').code, 0);
+});
+
+test('malformed unmerged branch metadata produces warnings without failing the mirror check', () => {
+  const { dir, run, github } = setup();
+  run('publish');
+  git(dir, 'checkout', '-q', '-b', 'test/checks-pass');
+  writeFiles(dir, { [CHECKS_PATH]: checksSpec('active') });
+  commitAndPush(dir, 'start', 'test/checks-pass');
+  assert.equal(run('start', CHECKS_ID).code, 0);
+  writeFiles(dir, { [CHECKS_PATH]: '---\nid: 20261030-checks-pass\nnot yaml\n---\n' });
+  commitAndPush(dir, 'invalid unmerged metadata', 'test/checks-pass');
+  const writes = github().writes.length;
+  const result = run('check', '--json');
+  assert.equal(result.code, 0, result.err);
+  assert.ok(JSON.parse(result.out).warnings.some((x) => x.includes('could not be inspected')));
+  assert.equal(github().writes.length, writes);
 });

@@ -6,6 +6,7 @@ You are the worker of the <epic or spike> `<epic id>`. Use the `siesta-work-epic
 
 - Worktree `<path>`, on the branch `<branch>`, pushed, cut from `<base>` at `<commit>`.
 - The spec is `active` since <date>.
+- Slug `<slug>`, branch type `<type>` (from the spec or inferred at launch).
 
 ## What to read
 

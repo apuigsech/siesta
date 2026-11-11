@@ -3,6 +3,10 @@ id: <epic id>
 title: <Epic title>
 kind: epic
 status: proposed
+blocked: null
+type: null
+delivery:
+  urls: []
 roadmap: <roadmap id>
 phase: <phase slug>
 depends_on: []

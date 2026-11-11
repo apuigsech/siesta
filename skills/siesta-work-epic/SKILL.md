@@ -13,7 +13,7 @@ user-invocable: false
 ## Start, or start again
 
 1. Read the brief, the repository's agent instructions, the spec and, when there is one, the plan beside it. When you start again, read your report first: it is where you left off.
-2. Check the epic identity, worktree and branch against the brief and report. A new assignment has its spec `active`. On resumption, `blocked` may mean an unresolved blocker, and `completed` on this branch may mean its final pull request still needs review fixes; resume that stage, without resetting its status. If the final pull request is already merged, report that and stop. If the identity or stage cannot be reconciled, stop and tell the project manager.
+2. Check the epic identity, worktree and branch against the brief and report. A new assignment has its spec `active`. On resumption, inspect the separate `blocked` field and do only work independent of it; migrate legacy `status: blocked` with evidence as `siesta-plan` says. `completed` on this branch may mean its final pull request still needs review fixes; resume that stage, without resetting its status. If the final pull request is already merged, report that and stop. If the identity or stage cannot be reconciled, stop and tell the project manager.
 3. Prepare the worktree as the repository's instructions say, such as installing its dependencies.
 
 ## Plan
@@ -40,12 +40,12 @@ An action of a kind in `autonomy.waits_for_human` goes to the project manager, w
    - add the test that catches it;
    - or remove the code, when it made no difference;
    - or say in the report why it stays.
-2. Run every command in `execution.before_pr`. Correct a diagnosed failure and rerun the affected checks. For the same unexplained or external failure, allow one retry; if it recurs without a relevant change or new evidence, record the failure, retry and last progress in the report, tell the project manager you are blocked, and work only on independent steps. Do not open the pull request as ready until all commands pass; then reach the moment `before-pr`.
-3. Set the spec to `completed` only in the epic's last pull request, and only when every acceptance criterion is checked and verified. Otherwise it stays `active`.
+2. Run every command in `execution.before_pr`. Correct a diagnosed failure and rerun the affected checks. For the same unexplained or external failure, allow one retry; if it recurs without a relevant change or new evidence, record the failure, retry and last progress in the report, set the spec's `blocked` field with date and reason without changing its lifecycle status, tell the project manager, and work only on independent steps. Do not open the pull request as ready until all commands pass; then reach the moment `before-pr`.
+3. Clear a resolved `blocked` field; an unresolved blocker prevents completion. Set the spec to `completed` only in the epic's last pull request, and only when every acceptance criterion is checked and verified. Otherwise it stays `active`.
 4. Open the pull request against the integration branch with the host's own tool, such as `gh` on GitHub:
-   - titled as `naming.commits` says, with `naming.pr_reference` when it is set;
+   - titled as `naming.commits` says, using the optional epic `type` for a conventional title, with `naming.pr_reference` when it is set;
    - its body says what it brings, each criterion with its evidence, the mutations that survived, the hypotheses and the decisions it proposes.
-5. Never merge it.
+5. Once the host gives the PR its URL, append it to the spec's `delivery.urls` (preserving older links), commit and push that record before asking for review. A draft PR may be opened earlier to obtain its URL. Never invent the URL or add it after review without revalidating the new head. Never merge it.
 6. When the epic is large, propose a split into several pull requests to the project manager first, each one reviewable on its own.
 7. Tell the project manager.
 

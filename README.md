@@ -335,6 +335,43 @@ opens no round: the project manager says it right in the merge message.
 | Briefs, reports, review rounds, statuses, logs and retros | `~/.local/state/siesta/<repo>/notes/`, outside every worktree |
 | Workers' worktrees | `~/.local/state/siesta/<repo>/worktrees/` |
 
+An epic or spike keeps its lifecycle status while blocked. Optional metadata looks like this:
+
+```yaml
+status: active
+blocked:
+  since: 2026-11-11
+  reason: Waiting for access to the preview environment
+type: feat
+delivery:
+  urls:
+    - https://github.com/example/project/pull/27
+    - https://github.com/example/project/pull/31
+```
+
+Clear `blocked` to `null` when resolved. The worker records each delivery PR before review; GitHub
+shows “Delivery PRs” while work is in progress and “Delivered by” once completed on integration.
+The optional `type` selects the conventional branch/PR prefix; individual commits describe their
+own changes. Omit it or use `null` to infer it. Free commit naming remains available.
+
+The epic slug defaults to its id without a leading `YYYYMMDD-`; an optional `slug` supports custom
+IDs. Live epics and spikes cannot share a slug across roadmaps. The launcher also checks actual
+branch and worktree destinations, including resources left by historical work.
+
+Phases may use `## Phase — Title` or the older numbered heading. Their order is their document
+order, and their identity remains the explicit slug. Closing a phase records, for example,
+`completed on 2026-11-11: criteria verified on main at abc123`, using the commit actually verified.
+The script does not require closure evidence in older documents.
+
+When upgrading to 0.5.0, existing `delivery.url` and numbered phase headings remain readable.
+Legacy `status: blocked` is preserved with a warning: recover its previous lifecycle status and
+blocker date from evidence before migrating; ask when unknown. No historical specs are rewritten
+automatically. Update the repository's copy of the sync script along with the skills.
+
+`check --json` separates mirror differences from advisory `warnings` and unmerged `pending`
+branch observations. Missing active branches do not by themselves change its exit code. A completed
+epic's branch may have been deleted normally. Branch observations never publish unmerged progress.
+
 The repository is the record. GitHub, through the sync add-on, only mirrors it. Sync runs after
 merges and epic starts, or on explicit request; mirror drift does not gate pull requests. When
 upgrading, remove the old Siesta mirror-check workflow and retire its required-check setting, if

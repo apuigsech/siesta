@@ -3,6 +3,10 @@ id: <spike id>
 title: <Spike title>
 kind: spike
 status: proposed
+blocked: null
+type: null
+delivery:
+  urls: []
 roadmap: <roadmap id>
 phase: <phase slug>
 depends_on: []
