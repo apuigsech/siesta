@@ -34,7 +34,7 @@ The branch is named by `naming.branch`. In the worktree, change the spec's statu
 
 ## 3. The brief
 
-Write `paths.notes/brief-<epic id>.md` in the shape of [assets/brief.md](assets/brief.md), in `project.language.docs`. The `siesta-work-epic` skill holds the rules every worker follows, so the brief holds only what is particular to this epic: where it is, what to read, what is already known, its own limits and how to reach the project manager. Name decisions and open questions by id, and give the numbers already taken on open branches.
+Write `paths.notes/brief-<epic id>.md` in the shape of [assets/brief.md](assets/brief.md), in `project.language.docs`. The `siesta-work-epic` skill holds the rules every worker follows, so the brief holds only what is particular to this epic: where it is, what to read, what is already known, its own limits and how to reach the project manager. Name decisions and open questions by id, and give the numbers already taken on open branches. Point to each file by its path, and to a passage by its heading, and copy none of their text into the brief: the brief stays in the worker's context for the whole epic.
 
 ## 4. The session
 

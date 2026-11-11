@@ -2,7 +2,7 @@
 
 How the files combine and how to read what they say. Every key, its default and its meaning are in [the defaults](../assets/defaults.yaml): that file is the one list of keys.
 
-Contents: layers, how layers combine, autonomy, naming placeholders, paths, checking a file.
+Contents: layers, how layers combine, efforts, review settings, autonomy, naming placeholders, paths, checking a file.
 
 ## Layers
 
@@ -24,6 +24,31 @@ A missing file is an empty layer, except the repository's: without it the reposi
 - Report a key the defaults do not define instead of guessing its meaning. Keys under `addons.<name>` are the exception: each add-on defines its own.
 - `version` must be `1`. Report any other value and stop.
 - A role's `model` and `effort` are read for the role's effective `harness`. `default` is that harness's default. `current` is the starting session's value when the role runs on the same harness, and that harness's default otherwise. A model or effort the harness does not offer falls back to its default, and you say so.
+
+## Efforts
+
+A role's `effort` is one value, or, for these roles, a map with one value for each part of the work:
+
+| Role | Keys | Each applies to |
+|---|---|---|
+| `pm` | `default`, and optionally `plan` and `review` | The project manager's own turns, changing the plan, and leading a review round. One left out takes `default`'s value. `siesta-run-roadmap` says how the session reaches each |
+| `reviewer`, `rechecker` | `rounds`, and optionally `closing` | A review's rounds, and what gates its end. Without `closing` there is no closing pass. `siesta-review` says when each applies |
+
+`roles.reviewer.perspectives` pins the effort of one perspective's reviewer in every round, such as `{ security: max }`.
+
+Each value is read as a single effort is: an effort the role's harness offers, `current` or `default`.
+
+## Review settings
+
+`siesta-review` says what each level and each class covers.
+
+| Key | Takes |
+|---|---|
+| `review.pull_request.reviewers` | A number, or a number for each class of change: `default`, `security` and `docs-only`. A class left out takes `default`'s number. `review.plan.reviewers` is a number |
+| `review.plan.recheck`, `review.pull_request.recheck` | Which fixes an independent re-checker confirms: `all`, `code`, `blocking` or `off`. The lead checks the others |
+| `review.pull_request.mutation_check` | Which re-checked fixes are undone to see their test fail: `all`, `blocking` or `off` |
+
+In a file written for an earlier version, `true` for `recheck` or for `review.pull_request.mutation_check` reads as `all`, and `false` as `off`. Say so, and propose the level in the repository's file.
 
 ## Autonomy
 
@@ -67,4 +92,4 @@ A path is relative to the repository's root unless it is absolute or starts with
 
 ## Checking a file
 
-Until Siesta ships a validator, check a configuration file by reading it: `version` is `1`, every key exists in the defaults or sits under `addons`, each value is of the kind its default shows, and every placeholder is in the table above.
+Until Siesta ships a validator, check a configuration file by reading it: `version` is `1`, every key exists in the defaults or sits under `addons`, each value is of the kind its default shows or of another kind this reference allows for its key, and every placeholder is in the table above.

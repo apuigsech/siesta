@@ -36,7 +36,7 @@ An action of a kind in `autonomy.waits_for_human` goes to the project manager, w
 
 ## The pull request
 
-1. **In an epic, with `execution.mutation_check` on, check that the tests catch faults.** Once they all pass, break the code the epic changed on purpose, one small change at a time: a condition reversed, a rule a criterion or a decision sets broken, a line removed. Each change is a mutation. Run the tests, then undo it. One mutation for each rule or branch that matters is enough. A mutation the tests still pass survived:
+1. **In an epic, with `execution.mutation_check` on, check that the tests catch faults.** Once they all pass, break the code the epic changed on purpose, one small change at a time: a condition reversed, a rule a criterion or a decision sets broken, a line removed. Each change is a mutation. Run the tests, then undo it. One mutation for each rule or branch that matters is enough. Run them through one script that keeps each run's output in a file and prints one line for each mutation, caught or survived, and read a run's output only to explain a survivor: the tests' output stays out of your context. A mutation the tests still pass survived:
    - add the test that catches it;
    - or remove the code, when it made no difference;
    - or say in the report why it stays.

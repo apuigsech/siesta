@@ -13,11 +13,11 @@ project:
 
 roles:                            # harness, model and effort per role; current: as the session doing the starting; default: the harness's default
   define:    { harness: current, model: current, effort: current }
-  pm:        { harness: current, model: current, effort: current }
+  pm:        { harness: current, model: current, effort: current }   # effort: one value, or one per activity: { default, plan, review }
   worker:    { harness: current, model: current, effort: current }
   spike:     { harness: current, model: current, effort: current }
-  reviewer:  { harness: current, model: current, effort: current }
-  rechecker: { harness: current, model: current, effort: current }
+  reviewer:  { harness: current, model: current, effort: current, perspectives: {} }   # effort: one value, or one per stage: { rounds, closing }; perspectives: an effort pinned for one perspective, such as { security: max }
+  rechecker: { harness: current, model: current, effort: current }   # effort: one value, or one per stage: { rounds, closing }
 
 paths:
   product: docs/purpose.md
@@ -62,7 +62,7 @@ execution:
   max_parallel_epics: 2
   parallel_when: disjoint-files   # disjoint-files | always
   before_pr: []                   # commands each worker runs before opening its pull request
-  mutation_check: true            # before its pull request, each worker breaks its own code on purpose to check that the tests catch it
+  mutation_check: true            # true | false; before its pull request, each worker breaks its own code on purpose to check that the tests catch it
   after_merge:
     deploys: null                 # what a merge deploys, such as an environment's address
     on_broken_deploy: revert-and-checkpoint   # revert-and-checkpoint | checkpoint
@@ -71,14 +71,16 @@ review:
   plan:
     reviewers: 5
     perspectives: [security, performance, usability, cost, operability, data]
+    blocking: [critical, high]    # severities that keep a plan from going to the human
     max_rounds: 5                 # past this, a checkpoint
+    recheck: code                 # as in pull_request; in a plan, code is a change of scope, of acceptance criteria or of dependencies
   pull_request:
-    reviewers: 5
+    reviewers: 5                  # a number, or one per class of change: { default: 2, security: 3, docs-only: 1 }
     perspectives: [correctness, security, performance, operability, tests]
     blocking: [critical, high]    # severities that block a merge
     max_rounds: 5                 # past this, a checkpoint
-    recheck: true                 # an independent re-checker confirms each fix
-    mutation_check: true          # each fix brings a test that fails without it
+    recheck: code                 # which fixes an independent re-checker confirms: all | code (fixes to blocking findings, and fixes that change code, tests or infrastructure) | blocking | off; the lead checks the others
+    mutation_check: blocking      # which re-checked fixes are undone to see their test fail: all | blocking | off
 
 interview:
   questions: rounds               # rounds: the whole frontier at once | one-at-a-time

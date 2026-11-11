@@ -11,11 +11,11 @@ You are the worker of the <epic or spike> `<epic id>`. Use the `siesta-work-epic
 ## What to read
 
 - The spec, `<path>`, and its plan, `<path>`, when there is one.
-- <The decisions, the architecture's sections, the features and the module charters this epic touches, by id or path.>
+- <The decisions, the architecture's sections, the features and the module charters this epic touches, each by its id or its path and heading. None of their text is copied here.>
 
 ## What is known
 
-- <Facts that would otherwise cost the worker time to find: the state of its dependencies, the decision and open question numbers taken on open branches, an environment it can use.>
+- <Facts that would otherwise cost the worker time to find, one line each: the state of its dependencies, the decision and open question numbers taken on open branches, an environment it can use. A fact a file already holds points to that file.>
 
 ## Limits
 

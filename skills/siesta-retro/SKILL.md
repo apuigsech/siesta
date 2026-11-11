@@ -23,13 +23,25 @@ Only what is written down:
 
 | Source | Look for |
 |---|---|
-| The project manager's log: its choices and the human's corrections | What it had to work around, and what the human corrected |
+| The project manager's log, its history above all: its choices and the human's corrections | What it had to work around, and what the human corrected |
 | Each worker's brief and report: hypotheses, corrections, what it told the project manager | The same obstacle, hypothesis or correction in more than one epic |
-| The review rounds | The same kind of finding, the rounds each pull request took, a panel that could not start, a fault found only after its merge |
+| The review rounds and their re-checks | The same kind of finding, the rounds each pull request took, a panel that could not start, a fault found only after its merge, and what each round cost and who found each finding |
 | The checkpoint's log | Questions that were tasks rather than decisions, answers that were always the same, proposals the human declined |
 | The decisions, the statuses and the integration branch's history | Decisions replaced, discrepancies that came back, reverts, fixes after a merge, refused merges |
 | Earlier retros' files, `paths.notes/retro-*.md` | What was proposed before, and what the human answered |
 | The effective configuration and Siesta's current skills | Whether a cause is already fixed |
+
+## What the reviews cost
+
+The round files and the re-check files record what each reviewer and re-checker cost, and who found each finding, as `siesta-review` says. From them, count for each effort a reviewer or a re-checker ran at:
+
+- the findings of each severity;
+- the findings that only a later or a stronger pass found: a later round, the closing pass or a re-check;
+- the tokens for each finding. Where the harness reports no tokens, use the tool calls, and say so.
+
+Put the counts in the retro's file. Leave out a figure a file gives as `not reported`, say how many were left out, and never estimate one.
+
+The counts feed proposals like any other pattern: a lower effort for the rounds when the stronger passes found nothing they had missed, a higher one when they kept finding what the rounds missed, a smaller panel for a class of change whose extra reviewers found nothing.
 
 ## What becomes a proposal
 

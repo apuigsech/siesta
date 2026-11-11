@@ -6,8 +6,9 @@
 
 ## Questions and approvals
 
-<Each in the question reference's shape, most consequential first. After its options, two lines:>
+<Each in the question reference's shape, most consequential first, in about 15 lines at most. After its options, these lines:>
 
+More: <the note with the full reasoning of its options and its numbers, `<paths.notes>/q-<n>.md`; only when there is one>.
 Waits for it: <the epic, the pull request or the work that cannot go on without the answer>.
 Meanwhile: <what goes on, or "Nothing">.
 

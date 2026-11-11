@@ -21,9 +21,9 @@ Check each condition now, on the pull request as it is:
 | Condition | How to check it |
 |---|---|
 | The review is closed | Every finding of every round is closed, as `siesta-review` says |
-| The head is the one reviewed | The head commit is the one the last round and its re-check saw. Any commit since, a merge of the integration branch included, gets a re-check of what it changed first |
+| The head is the one reviewed | The head commit is the one the last round and the check of its fixes saw. Any commit since, a merge of the integration branch included, has what it changed checked first, by whoever `recheck` gives it to in `siesta-review` |
 | Its checks pass | Every check the host runs on that head commit has passed |
-| It merges cleanly | No conflict with the integration branch. When there is one, the worker brings the integration branch in, and the checks and the re-check run again |
+| It merges cleanly | No conflict with the integration branch. When there is one, the worker brings the integration branch in, the checks run again, and what the merge changed is checked the same way |
 | The spec is true | When it sets the epic to `completed`, every acceptance criterion is checked. With one unchecked, the spec stays `active` |
 | Nothing in it waits for the human | See below |
 
@@ -32,7 +32,7 @@ Check each condition now, on the pull request as it is:
 Read the diff and its review against every entry in `autonomy.waits_for_human`, the literal ones too, such as "merging anything that touches payments":
 
 - **A decision.** A pull request that adds or changes a decision, or builds on one that is still Proposed, merges once that decision is Accepted, as `siesta-decide` says, and the entry records who accepted it. A spike's pull request is the exception: it merges with its decision Proposed, and accepting it is a checkpoint question of its own.
-- **A review that was not independent,** as `siesta-review` says. With `merge-without-panel` listed, the merge is a checkpoint approval. Without it, merge, and add a notice to the checkpoint. Either way, name the rounds the lead did alone.
+- **A review that was not independent,** as `siesta-review` says: the lead did alone a round, or a re-check that `recheck` gives the re-checker. A fix that `recheck` leaves to the lead does not make it so. With `merge-without-panel` listed, the merge is a checkpoint approval. Without it, merge, and add a notice to the checkpoint. Either way, name the rounds the lead did alone.
 - **A change to `autonomy`.** It merges only with the human's acceptance of the pull request.
 - **Any other kind it contains,** such as a scope change, a security setting or a new running cost. Each one is a checkpoint approval, and the merge waits for the yes.
 
@@ -51,10 +51,15 @@ The two conditions on its review do not apply; every other does, and the merge i
 Merge with the host's own tool, by `git.merge.method`, pinned to the reviewed head, so that nothing else gets in. On GitHub:
 
 ```bash
-gh pr merge <number> --<method> --match-head-commit <reviewed sha>
+gh pr merge <number> --<method> --match-head-commit <reviewed sha> --subject "<subject>" --body-file <message file>
 ```
 
-The merge commit's message follows `naming.commits`. Never push to the integration branch, and never force. When the host or a guard refuses the merge, do not work around it: tell the human why, in one line.
+The merge message is yours to write, and follows `naming.commits`. It is what reaches the integration branch; the pull request's body does not.
+- Write it from the change as it was reviewed: what it brings, with what the round files' notes corrected in the body.
+- Never reuse the commits' messages as they are: an early commit's subject may say what a later one undid.
+- A method that writes no message of its own, such as `rebase`, takes none.
+
+Never push to the integration branch, and never force. When the host or a guard refuses the merge, do not work around it: tell the human why, in one line.
 
 ## After the merge
 
@@ -67,4 +72,4 @@ The merge commit's message follows `naming.commits`. Never push to the integrati
 3. When `execution.after_merge.deploys` is set, check that this merge's deployment works: its pipeline finished, and the address answers as it should. When it broke:
    - with `revert-and-checkpoint`, open a pull request that reverts the merge at once, merge it when its checks pass, and tell the human through the checkpoint;
    - with `checkpoint`, tell the human through the checkpoint at once, and leave the merge in place.
-4. Update the project manager's log: the pull request merged, and the epic completed or its next part.
+4. Update the project manager's log: the merge in its history, and in its state the epic's next part, or its row removed once the epic is completed.

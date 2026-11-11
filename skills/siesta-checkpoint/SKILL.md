@@ -27,7 +27,7 @@ Write an item as soon as it arises. A checkpoint does not stop the work that doe
 
 Number items in the order they are added, and never renumber them while the checkpoint is open. When an answer raises a new question, it takes the next free number. An answer like "Q-5 sí" must mean the same thing in every version of the file.
 
-Questions and approvals use the question reference's shape, and each also says what waits for it and what goes on meanwhile. An approval says exactly what will happen with a yes, who does it, and what it costs. What only the human can do, such as creating an account, signing in or handing over a credential, is said as steps for them. Never ask them to paste a token into the conversation or a file. A running cost needs an answer of its own, never a wholesale yes.
+Questions and approvals use the question reference's shape, and each also says what waits for it and what goes on meanwhile. Keep each one to about 15 lines at most: what it decides, its options and the one you recommend. The full reasoning of its options, and its numbers, go in a note of its own, `paths.notes/q-<n>.md`, that the question links to. The project manager reads the checkpoint at each turn of its loop, so what is long lives beside it. An approval says exactly what will happen with a yes, who does it, and what it costs. What only the human can do, such as creating an account, signing in or handing over a credential, is said as steps for them. Never ask them to paste a token into the conversation or a file. A running cost needs an answer of its own, never a wholesale yes.
 
 Write the file in `project.language.human`, headings and labels included, in the shape of [assets/checkpoint.md](assets/checkpoint.md). When `checkpoints.status_first` is on, the file begins with a current status, written with `siesta-status`, without its "What needs you", and the message that tells the human the checkpoint is open begins with that status's headline. Refresh the status each time the checkpoint changes.
 
@@ -50,6 +50,6 @@ Take each answer by its id. When an answer is unclear, ask about it now, while t
 Then:
 
 1. Append each answered item to the log, `paths.notes/checkpoint-log.md`: its id and title, the date, their words, and where it went.
-2. Remove the answered items from the checkpoint and keep the rest as they were, ids included.
+2. Remove the answered items from the checkpoint at once, and keep the rest as they were, ids included. Their notes stay in `paths.notes`.
 3. When nothing is left, delete the checkpoint.
 4. Tell the human in a few lines what each answer led to, and what is still open.
