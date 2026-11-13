@@ -12,7 +12,7 @@ Roadmap `<roadmap id>`, integration branch `<branch>`, since <date>. History: `<
 
 | Epic | Session | Worktree and branch | Brief | Pull request | Stage | Since |
 |---|---|---|---|---|---|---|
-| <epic id> | <session title> | <path>, `<branch>` | <brief file> | <#n, or —> | <building, pull request open, review round n, waits for Q-n> | <date and time> |
+| <epic id> | <session title> | <path>, `<branch>` | <brief file> | <#n, or —> | <a stage from `siesta-plan`: building, review round n, fixing round n, re-check round n, ready to merge, waits for the human, paused; optionally ` — ` and a detail, such as `waits for the human — Q-12`> | <date and time> |
 
 ## Queue
 

@@ -33,6 +33,29 @@ function git(root, ...args) {
 }
 function tryGit(root, ...args) { try { return git(root, ...args); } catch { return null; } }
 
+// Every session that loads Siesta's Claude adapter in a checkout of this repository writes what it is doing to
+// `<git common dir>/siesta-activity/`, outside the tree: whether it runs a turn, how many background tasks it has, and
+// when it last said so. A record not renewed for two minutes is a session that is gone.
+export const ACTIVITY_STALE_MS = 120_000;
+export function activityDir(root) {
+  const common = tryGit(root, 'rev-parse', '--path-format=absolute', '--git-common-dir');
+  return common ? join(common, 'siesta-activity') : null;
+}
+export function readActivity(root, now = new Date()) {
+  const dir = activityDir(root);
+  let names = [];
+  try { names = dir ? readdirSync(dir).filter(name => name.endsWith('.json')) : []; } catch { return []; }
+  return names.flatMap(name => {
+    try {
+      const record = JSON.parse(readFileSync(join(dir, name), 'utf8'));
+      if (typeof record.cwd !== 'string' || typeof record.at !== 'string') return [];
+      const fresh = now - new Date(record.at) < ACTIVITY_STALE_MS;
+      const state = !fresh ? 'gone' : record.running ? 'running' : 'idle';
+      return [{ cwd: record.cwd, state, tasks: fresh && Number.isInteger(record.tasks) ? record.tasks : 0, at: record.at }];
+    } catch { return []; }
+  });
+}
+
 // Do not count examples inside fenced code blocks as work or checkpoint items.
 export function prose(text) {
   let fence = null;
@@ -96,6 +119,61 @@ export function parseWorkers(text) {
       pullRequest: /https:\/\/[^\s)]+\/pull\/\d+/.exec(cells[4])?.[0] ?? null,
     }];
   });
+}
+
+// The stages of an active epic, as `siesta-plan` defines them: `building`, `review`, `fixing` and `recheck` (each with
+// its round), `ready` to merge, `human` when it waits for the human, and `paused` when the human paused it. A stage is `{ key, round, detail, from }`.
+export const STAGES = ['building', 'review', 'fixing', 'recheck', 'ready', 'human', 'paused'];
+const STAGE_WORDS = [
+  ['recheck', /^(?:in\s+)?re-?\s?check(?:ing)?\b/],
+  ['fixing', /^(?:fix(?:ing|es)?|correct(?:ing)?|corrigiendo|answering)\b/],
+  ['review', /^(?:(?:in\s+)?review(?:ing)?|revisi[oó]n|en revisi[oó]n|pull request open|pr open)\b/],
+  ['ready', /^(?:ready(?:\s+to\s+merge)?|lista para (?:el )?merge)\b/],
+  ['human', /^(?:waits?(?:ing)?\s+for\s+(?:the\s+)?human|espera(?:ndo)? al humano)\b/],
+  ['paused', /^(?:paused|en pausa|pausada)\b/],
+  ['building', /^(?:building|construyendo|working|in progress)\b/],
+];
+// The Stage cell of the PM log: a stage's words first, then, optionally, ` — ` and a detail. Older free text, such as
+// "Paused: Q-1", is read too. Text that names no stage, such as a checkpoint id alone, gives null.
+export function normaliseStage(text) {
+  const value = clean(text);
+  if (!value || value === '—' || value === '-') return null;
+  const lower = value.toLowerCase();
+  const found = STAGE_WORDS.find(([, pattern]) => pattern.test(lower));
+  const question = /\bQ-\d+\b/i.exec(value)?.[0]?.toUpperCase() ?? null;
+  const key = found?.[0] ?? null;
+  if (!key) return null;
+  const round = ['review', 'fixing', 'recheck'].includes(key) ? Number(/\b(?:round|ronda|r)\s*(\d+)\b/i.exec(value)?.[1]) || null : null;
+  const rest = value.split(/\s+[—–]\s+|:\s+/).slice(1).join(' — ').trim();
+  return { key, round, detail: rest || (key === 'human' ? question : null), from: 'log' };
+}
+// When the log says nothing usable: the review files of `siesta-review` in the notes folder, for the pull request's
+// target `pr-<number>`. `closingPass` is whether the configuration has a closing pass, which a review must end with.
+export function stageFromReviews(notes, pullRequest, { closingPass = false } = {}) {
+  const number = /\/pull\/(\d+)/.exec(pullRequest ?? '')?.[1];
+  if (!number) return { key: 'building', round: null, detail: null, from: 'pull request' };
+  const target = `review-pr-${number}-r`;
+  let names = [];
+  try { names = readdirSync(notes).filter(name => name.startsWith(target)); } catch { names = []; }
+  const rounds = names.map(name => Number(/^-?(\d+)/.exec(name.slice(target.length))?.[1])).filter(Boolean);
+  const round = rounds.length ? Math.max(...rounds) : 0;
+  const stage = (key, n) => ({ key, round: n, detail: null, from: 'reviews' });
+  if (!round) return stage('review', 1);
+  const file = suffix => read(join(notes, `${target}${round}${suffix}.md`));
+  const roundText = file('');
+  const response = file('-response');
+  const recheck = file('-recheck');
+  const isClosing = /^-\s*\*\*Pass:\*\*[^\n]*closing/im.test(roundText ?? '');
+  const closed = () => !closingPass || isClosing;
+  if (recheck != null) {
+    const open = /^##\s+F-\d+\s*·\s*(?:Partial|Fails?|Does not hold)/im.test(recheck) || /^###\s+F-\d+/m.test(section(recheck, /^## New findings\s*$/i) ?? '');
+    return open || !closed() ? stage('review', round + 1) : stage('ready', round);
+  }
+  if (response != null) return stage('recheck', round);
+  if (roundText == null) return stage('fixing', round);
+  const nothingOpen = /^-\s*\*\*Outcome:\*\*\s*nothing left open/im.test(roundText) || !/^###\s+F-\d+/m.test(section(roundText, /^## Findings\s*$/i) ?? '');
+  if (nothingOpen) return closed() ? stage('ready', round) : stage('review', round + 1);
+  return stage('fixing', round);
 }
 
 function loadConfig(root, repo, home, env, warnings) {
@@ -196,6 +274,7 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
     pmSources.push({ path, modifiedAt: modified(path) });
     for (const worker of parseWorkers(text)) assignments.set(worker.id, worker);
   }
+  const closingPass = object(config.roles?.reviewer?.effort) && config.roles.reviewer.effort.closing != null;
   const branches = git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes/origin').split('\n');
   const branchNames = new Set(branches.map(branch => branch.replace(/^refs\/(heads|remotes\/origin)\//, '')));
   const epics = files.filter(path => path.startsWith(`${epicsPath}/`) && path.endsWith('/spec.md')).map(path => {
@@ -215,9 +294,11 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
     let branchText = null;
     let plan = show(commit, `${dirname(path)}/plan.md`);
     let readFrom = ref.replace('refs/remotes/', '').replace('refs/heads/', '');
+    let worktree = null;
     if (!closed.has(meta.status)) {
       if (!worker?.branch && candidates.length > 1) warnings.push(`Ambiguous worker branch: ${meta.id}`);
       const folder = worktrees.find(item => item.branch === branch)?.path;
+      worktree = folder ?? null;
       const branchRef = branches.includes(`refs/heads/${branch}`) ? `refs/heads/${branch}` : `refs/remotes/origin/${branch}`;
       if (branch && folder) {
         branchText = read(join(folder, path));
@@ -232,17 +313,25 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
     if (branchMeta.id !== meta.id) throw new Error(`Worker epic identity differs: ${path}`);
     const active = !closed.has(meta.status) && (Boolean(worker) || meta.status === 'active' || ['active', 'completed'].includes(branchMeta.status));
     if (meta.status === 'blocked') warnings.push(`Legacy blocked status; recover its lifecycle: ${meta.id}`);
+    const delivery = [...new Set([...list(branchMeta.delivery?.urls), ...(branchMeta.delivery?.url ? [branchMeta.delivery.url] : []),
+      ...list(meta.delivery?.urls), ...(meta.delivery?.url ? [meta.delivery.url] : []), ...(worker?.pullRequest ? [worker.pullRequest] : [])])].filter(url => /^https?:\/\//.test(url));
     return {
       id: meta.id, title: meta.title || meta.id, roadmap: meta.roadmap, phase: meta.phase, path,
       status: meta.status, statusOnBranch: branchText == null ? null : branchMeta.status,
       blocked: Object.hasOwn(branchMeta, 'blocked') ? branchMeta.blocked : meta.blocked ?? null,
       dependsOn: list(meta.depends_on), waitsFor: list(meta.waits_for), active,
       criteria: countChecks(section(branchText ?? text, /^## Acceptance criteria\s*$/i)), tasks: countChecks(plan),
-      branch, readFrom, session: worker?.session || null, stage: worker?.stage || null, since: worker?.since || null,
-      delivery: [...list(meta.delivery?.urls), ...(meta.delivery?.url ? [meta.delivery.url] : []), ...(worker?.pullRequest ? [worker.pullRequest] : [])].filter(url => /^https?:\/\//.test(url)),
+      branch, readFrom, worktree, session: worker?.session || null, stageRecorded: worker?.stage || null, since: worker?.since || null,
+      delivery, stage: !active ? null : normaliseStage(worker?.stage) ?? stageFromReviews(notes, worker?.pullRequest || delivery.findLast(url => /\/pull\/\d+/.test(url)), { closingPass }),
     };
   });
   if (new Set(epics.map(epic => epic.id)).size !== epics.length) throw new Error('Duplicate epic ids');
+  // What each worker's session last said of itself (see readActivity): matched by the worktree it runs in.
+  const activity = readActivity(root, now);
+  for (const epic of epics) {
+    const record = epic.worktree && activity.find(item => item.cwd === epic.worktree || item.cwd.startsWith(`${epic.worktree}${sep}`));
+    epic.activity = record ? { state: record.state, tasks: record.tasks, at: record.at } : null;
+  }
   if (new Set(roadmaps.map(roadmap => roadmap.id)).size !== roadmaps.length) throw new Error('Duplicate roadmap ids');
   const completedIds = new Set(epics.filter(epic => epic.status === 'completed').map(epic => epic.id));
   // Compare the integration record with the previous saved report. Never count a worker's completion as delivery.
@@ -277,7 +366,7 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
   const checkpointText = read(checkpointPath);
   const checkpointItems = checkpointText == null ? [] : parseCheckpoint(checkpointText);
   return {
-    schemaVersion: 1, generatedAt: now.toISOString(), repo, root, mainRoot,
+    schemaVersion: 1, generatedAt: now.toISOString(), repo, root, mainRoot, activityDir: activityDir(root),
     project: config.project.name || repo, language: config.project.language.human,
     source: { ref: ref.replace('refs/remotes/', '').replace('refs/heads/', ''), commit, fetched: false },
     progress: config.status.progress, roadmaps,

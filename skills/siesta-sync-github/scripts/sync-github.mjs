@@ -20,7 +20,7 @@ import { pathToFileURL } from 'node:url';
 
 // Siesta's version, the same as in its manifests, which a test compares. A repository's copy of
 // this script is out of date when its version is older.
-export const VERSION = '0.6.0';
+export const VERSION = '0.7.0';
 
 // The defaults this script needs: the same values as the siesta skill's assets/defaults.yaml,
 // which a test compares.

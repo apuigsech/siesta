@@ -13,7 +13,7 @@ user-invocable: false
 ## Start, or start again
 
 1. Read the brief, the repository's agent instructions, the spec and, when there is one, the plan beside it. When you start again, read your report first: it is where you left off.
-2. Check the epic identity, worktree and branch against the brief and report. A new assignment has its spec `active`. On resumption, inspect the separate `blocked` field and do only work independent of it; migrate legacy `status: blocked` with evidence as `siesta-plan` says. `completed` on this branch may mean its final pull request still needs review fixes; resume that stage, without resetting its status. If the final pull request is already merged, report that and stop. If the identity or stage cannot be reconciled, stop and tell the project manager.
+2. Check the epic identity, worktree and branch against the brief and report. A new assignment has its spec `active`. On resumption, inspect the separate `blocked` field and do only work independent of it; migrate legacy `status: blocked` with evidence as `siesta-plan` says. Find the epic's stage, as `siesta-plan` defines it, from the project manager's log and the review files; `completed` on this branch may mean its final pull request is still at `fixing round <n>`. Resume that stage, without resetting its status. If the final pull request is already merged, report that and stop. If the identity or stage cannot be reconciled, stop and tell the project manager.
 3. Prepare the worktree as the repository's instructions say, such as installing its dependencies.
 
 ## Plan

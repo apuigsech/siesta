@@ -12,6 +12,12 @@ const words = {
     stale: 'Refresh failed. Last successful snapshot shown.', error: 'Could not read Siesta',
     all: 'All roadmaps; includes paused and blocked assignments.', pm: 'Coordinator record', checkpoint: 'Checkpoint',
     delivered: 'Delivered since', noneDelivered: 'No new deliveries.', closedOne: 'closed', closedMany: 'closed', working: 'working',
+    idle: 'idle', gone: 'no session', taskOne: 'task', taskMany: 'tasks',
+    aboutQuestions: 'Questions and approvals in the checkpoint that wait for your decision.',
+    aboutHypotheses: 'Choices taken while you were away, for you to confirm or correct.',
+    aboutReviews: 'Epics in progress in a review round: being reviewed, fixed or re-checked.',
+    blocked: 'blocked', round: 'round',
+    stages: { building: 'building', review: 'review', fixing: 'fixing', recheck: 're-check', ready: 'ready to merge', human: 'waits for the human', paused: 'paused' },
   },
   es: {
     pulse: 'Pulso', refresh: 'Actualizar', refreshing: 'Actualizando…', loading: 'Leyendo Siesta…',
@@ -25,6 +31,12 @@ const words = {
     stale: 'Falló la actualización. Se muestra la última lectura correcta.', error: 'No se pudo leer Siesta',
     all: 'Todos los roadmaps; incluye asignaciones en pausa y bloqueadas.', pm: 'Registro del coordinador', checkpoint: 'Checkpoint',
     delivered: 'Entregado desde', noneDelivered: 'Sin nuevas entregas.', closedOne: 'cerrada', closedMany: 'cerradas', working: 'trabajando',
+    idle: 'en espera', gone: 'sin sesión', taskOne: 'tarea', taskMany: 'tareas',
+    aboutQuestions: 'Preguntas y aprobaciones del checkpoint que esperan tu decisión.',
+    aboutHypotheses: 'Decisiones tomadas en tu ausencia, para que las confirmes o corrijas.',
+    aboutReviews: 'Épicas en curso en una ronda de revisión: en revisión, en corrección o en re-check.',
+    blocked: 'bloqueada', round: 'ronda',
+    stages: { building: 'construyendo', review: 'revisión', fixing: 'corrigiendo', recheck: 're-check', ready: 'lista para merge', human: 'espera al humano', paused: 'en pausa' },
   },
 };
 
@@ -100,26 +112,71 @@ export function drawStatus(elements, state, actions, surface) {
   const sources = text(`${status.repo} · ${status.source.ref} @ ${status.source.commit.slice(0, 7)}\n${t.local} · ${status.generatedAt.replace('T', ' ').replace(/\.\d+Z$/, ' UTC')}`, { key: 'source', size: 'caption', dimColor: true });
   if (!roadmap) return column([header('Siesta'), error, sources, text(t.noRoadmap)]);
   const checkpoint = status.checkpoint;
-  const reviews = roadmap.active.filter(epic => /review|revisi[oó]n|recheck/i.test(epic.stage || ''));
+  // An epic's stage, as `siesta-plan` defines it: what the reader normalised, or the log's own words when they name none.
+  const stageOf = epic => {
+    const stage = epic.stage;
+    if (!stage || typeof stage !== 'object') return typeof stage === 'string' ? stage : epic.stageRecorded || null;
+    const word = t.stages[stage.key] || stage.key;
+    return stage.round && ['review', 'fixing', 'recheck'].includes(stage.key) ? `${word} ${t.round} ${stage.round}` : word;
+  };
+  const reviews = roadmap.active.filter(epic => ['review', 'fixing', 'recheck'].includes(epic.stage?.key));
 
-  // A figure: its icon and its value, every tile the same width, the label kept as the icon's alt.
+  // A figure: its icon and its value, every tile the same width, the label kept as the icon's alt. Pointing at a tile
+  // shows what it counts in the line beneath the tiles, through a hover group of its own.
   const tile = (key, label, value, ink, color) => row([
     Svg ? Svg({ source: stroke(ink, ICONS[key][1]), alt: label, width: 18, height: 18 }) : text(ICONS[key][0], { color, dimColor: !color }),
     text(value, { size: 'heading', weight: 'semibold', tabular: true, color }),
-  ], { key, alignItems: 'center', flexWrap: 'nowrap', width: '24%', flexGrow: 0, flexShrink: 0, paddingX: 'sm', paddingY: 'xs', borderStyle: 'round', borderColor: 'subtle' });
+  ], { key, hover: { scope: `siesta-tile-${key}`, borderColor: 'claude' }, alignItems: 'center', flexWrap: 'nowrap', width: '32%', flexGrow: 0, flexShrink: 0, paddingX: 'sm', paddingY: 'xs', borderStyle: 'round', borderColor: 'subtle' });
+  const about = (key, label, description) => Box({
+    key: `about-${key}`, display: 'none', hover: { scope: `siesta-tile-${key}`, display: 'flex' },
+    children: [text(`${label}: ${description}`, { size: 'footnote', dimColor: true })],
+  });
   const asked = checkpoint.questions.length;
-  const full = status.capacity.used >= status.capacity.max;
-  const tiles = row([
-    tile('questions', t.questions, checkpoint.available ? asked : '—', asked ? INK.late : INK.done, asked ? 'warning' : 'success'),
-    tile('hypotheses', t.hypotheses, checkpoint.available ? checkpoint.hypotheses.length : '—', INK.muted),
-    tile('reviews', t.reviews, reviews.length, INK.muted),
-    tile('capacity', t.capacity, `${status.capacity.used}/${status.capacity.max}`, full ? INK.clay : INK.muted, status.capacity.used > status.capacity.max ? 'warning' : undefined),
-  ], { justifyContent: 'space-between', flexWrap: 'nowrap' });
+  const tiles = column([
+    row([
+      tile('questions', t.questions, checkpoint.available ? asked : '—', asked ? INK.late : INK.done, asked ? 'warning' : 'success'),
+      tile('hypotheses', t.hypotheses, checkpoint.available ? checkpoint.hypotheses.length : '—', INK.muted),
+      tile('reviews', t.reviews, reviews.length, INK.muted),
+    ], { justifyContent: 'space-between', flexWrap: 'nowrap' }),
+    about('questions', t.questions, t.aboutQuestions),
+    about('hypotheses', t.hypotheses, t.aboutHypotheses),
+    about('reviews', t.reviews, t.aboutReviews),
+  ], { gap: 'xs' });
 
   const checkpointItem = item => column([
     button(item.id, `${state.item === item.id ? '▾' : '▸'} ${item.id} · ${item.title}`, () => actions.item(item.id), { plain: true }),
     state.item === item.id && text(item.detail, { size: 'footnote' }),
   ], { key: `item-${item.id}`, gap: 'xs' });
+
+  // A worker's activity: the record its own session writes (matched by its worktree), else Claude Desktop's word that
+  // its session runs a turn. `state` is `running`, `idle`, `gone`, or null when nothing says.
+  const activityOf = epic => {
+    const record = epic.worktree && (state.activity ?? []).find(item => item.cwd === epic.worktree || item.cwd.startsWith(`${epic.worktree}/`));
+    const desktop = epic.session && epic.session in (state.running ?? {}) ? state.running[epic.session] : null;
+    if (record) return { state: record.state === 'running' || desktop ? 'running' : record.state, tasks: record.tasks };
+    if (epic.activity) return { state: epic.activity.state === 'running' || desktop ? 'running' : epic.activity.state, tasks: epic.activity.tasks };
+    return { state: desktop == null ? null : desktop ? 'running' : 'idle', tasks: 0 };
+  };
+  // A blocked epic keeps its stage; its dot turns amber, whatever its session does. A paused one's dot is muted, like an
+  // epic with no session.
+  const activityDot = (id, session, blocked, paused) => {
+    const kind = paused && !blocked ? null : session;
+    const color = blocked ? INK.late : kind === 'running' ? INK.clay : kind === 'idle' ? INK.done : INK.muted;
+    if (!Svg) return text(kind === 'running' ? '●' : kind === 'idle' ? '○' : blocked ? '●' : '·', { key: `dot-${id}`, color: blocked ? 'warning' : kind === 'running' ? 'claude' : undefined, dimColor: !blocked && kind !== 'running' });
+    const ring = kind === 'running'
+      ? `<circle cx="7" cy="7" r="3" fill="none" stroke="${color}" stroke-width="1.5"><animate attributeName="r" values="3;6.5" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.9;0" dur="1.4s" repeatCount="indefinite"/></circle>`
+      : '';
+    const core = kind === 'idle' ? `<circle cx="7" cy="7" r="3.2" fill="none" stroke="${color}" stroke-width="1.6"/>` : `<circle cx="7" cy="7" r="3.2" fill="${color}"/>`;
+    return Svg({ key: `dot-${id}`, source: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">${ring}${core}</svg>`, alt: `${paused && !blocked ? t.stages.paused : kind === 'running' ? t.working : kind === 'idle' ? t.idle : t.gone}${blocked ? ` · ${t.blocked}` : ''}`, width: 14, height: 14, isInteractive: kind === 'running' });
+  };
+  // One small block per background task, up to eight.
+  const taskBlocks = (id, count) => {
+    const shown = Math.min(count, 8);
+    if (!Svg) return text('▪'.repeat(shown), { key: `tasks-${id}`, color: 'claude' });
+    const width = shown * 7 - 2;
+    const body = Array.from({ length: shown }, (_, i) => `<rect x="${i * 7}" y="2" width="5" height="8" rx="1.2" fill="${INK.clay}" opacity="${0.55 + 0.45 * ((i + 1) / shown)}"/>`).join('');
+    return Svg({ key: `tasks-${id}`, source: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="12" viewBox="0 0 ${width} 12">${body}</svg>`, alt: `${count} ${count === 1 ? t.taskOne : t.taskMany}`, width, height: 12 });
+  };
 
   // An epic is measured as `status.progress` says: by its criteria, by its plan's tasks, or, `mixed`, by its tasks with
   // its criteria counted beside them.
@@ -128,16 +185,23 @@ export function drawStatus(elements, state, actions, surface) {
     const [count, label, empty] = byTasks ? [epic.tasks, t.tasks, t.noTasks] : [epic.criteria, t.criteria, t.noCriteria];
     const other = status.progress === 'mixed' ? ` · ${epic.criteria?.total ? `${epic.criteria.done}/${epic.criteria.total} ${t.criteria}` : t.noCriteria}` : '';
     const where = state.more ? epic.readFrom : epic.readFrom.startsWith('worktree:') ? 'local' : epic.readFrom;
-    // A worker whose session is running a turn: its card's border beats in clay, and it says so.
-    const working = Boolean(epic.session && state.running?.[epic.session]);
+    // The worker's session: running a turn (its card's border beats in clay), idle, or gone, with its background tasks.
+    const live = activityOf(epic);
+    const working = live.state === 'running';
+    const stage = stageOf(epic);
     return column([
       row([
-        text(epic.title, { weight: 'semibold' }),
         row([
-          working && text(`● ${t.working}`, { size: 'caption', color: 'claude' }),
-          text(where, { size: 'caption', dimColor: true }),
-        ], { alignItems: 'center' }),
+          activityDot(epic.id, live.state, Boolean(epic.blocked), epic.stage?.key === 'paused'),
+          text(stage ? `${epic.title} (${stage})` : epic.title, { key: `title-${epic.id}`, weight: 'semibold' }),
+        ], { alignItems: 'center', flexWrap: 'nowrap', flexShrink: 1 }),
+        text(where, { size: 'caption', dimColor: true }),
       ], { justifyContent: 'space-between', alignItems: 'center' }),
+      live.state && row([
+        text(working ? t.working : live.state === 'idle' ? t.idle : t.gone, { size: 'caption', color: working ? 'claude' : undefined, dimColor: !working }),
+        live.tasks > 0 && taskBlocks(epic.id, live.tasks),
+        live.tasks > 0 && text(`${live.tasks} ${live.tasks === 1 ? t.taskOne : t.taskMany}`, { size: 'caption', dimColor: true, tabular: true }),
+      ], { key: `activity-${epic.id}`, alignItems: 'center', flexWrap: 'nowrap' }),
       row([
         text(count?.total ? `${count.done}/${count.total} ${label}` : empty, { size: 'footnote', dimColor: true, tabular: true }),
         other && text(other.slice(3), { size: 'footnote', dimColor: true, tabular: true }),
@@ -145,7 +209,7 @@ export function drawStatus(elements, state, actions, surface) {
       count?.total > 0 && meter(`progress-${epic.id}`, count, label, 4),
       epic.statusOnBranch === 'completed' && text(t.pendingMerge, { size: 'caption', dimColor: true }),
       epic.blocked && text(`${t.blocker}${epic.blocked.since ? ` · ${epic.blocked.since}` : ''}: ${typeof epic.blocked === 'string' ? epic.blocked : epic.blocked.reason || '—'}`, { color: 'warning', size: 'footnote' }),
-      epic.stage && text(epic.stage, { size: 'footnote', dimColor: true }),
+      epic.stage?.detail && text(epic.stage.detail, { key: `stage-detail-${epic.id}`, size: 'footnote', dimColor: true }),
       ...epic.delivery.map((url, i) => Link({ key: `delivery-${epic.id}-${i}`, href: url, children: [`↗ ${url.replace(/^https?:\/\/(www\.)?github\.com\//, '')}`] })),
     ], { key: epic.id, paddingX: 'sm', paddingY: 'xs', borderStyle: 'round', borderColor: working && !state.pulse ? 'claude' : 'subtle', gap: 'xs' });
   };
@@ -172,7 +236,11 @@ export function drawStatus(elements, state, actions, surface) {
     ], { gap: 'xs' }),
     tiles,
     column([
-      heading(t.active), ...roadmap.active.map(epicCard), !roadmap.active.length && text(t.noActive, { dimColor: true }),
+      row([
+        heading(t.active),
+        text(`${status.capacity.used}/${status.capacity.max}`, { weight: 'semibold', tabular: true, color: status.capacity.used > status.capacity.max ? 'warning' : undefined, dimColor: status.capacity.used <= status.capacity.max }),
+      ], { key: 'active-heading', alignItems: 'center', flexWrap: 'nowrap' }),
+      ...roadmap.active.map(epicCard), !roadmap.active.length && text(t.noActive, { dimColor: true }),
     ]),
     phases,
     column([

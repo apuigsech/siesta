@@ -55,7 +55,7 @@ A pull request's body does not reach the integration branch. The merge message d
 
 ## Efforts
 
-`roles.reviewer` and `roles.rechecker` each have one effort, or one for each stage: `rounds` and `closing`. With one effort, everything runs at it and there is no closing pass. With both:
+`roles.reviewer` and `roles.rechecker` each have one effort, or one for each pass: `rounds` and `closing`. With one effort, everything runs at it and there is no closing pass. With both:
 
 - **The rounds run at the `rounds` effort:** their panel and their re-checks.
 - **A closing pass gates the end of the review.** When every finding is closed, one reviewer at the `closing` effort reads the whole change once, from every perspective, against what it must satisfy.
@@ -71,7 +71,7 @@ Each round file says which pass it is and the effort it ran at.
 ## Lead: run a round
 
 1. **Gather what the change must satisfy:** for a pull request, its epic's spec, the decisions and architecture rules it touches, and the feature it builds; for a plan, the product, the architecture, the features and the decisions.
-2. **Start the panel.** Start as many reviewers as the panel's size, each with the harness and model of `roles.reviewer` and the effort of its stage. Give each one or more of the configured perspectives, so that every perspective has a reviewer. With two reviewers or more, the perspective that matters most for this change has a reviewer that takes no other, and extra reviewers take it too. When the repository has `paths.perspectives/<perspective>.md`, give it to that perspective's reviewer.
+2. **Start the panel.** Start as many reviewers as the panel's size, each with the harness and model of `roles.reviewer` and the effort of its pass. Give each one or more of the configured perspectives, so that every perspective has a reviewer. With two reviewers or more, the perspective that matters most for this change has a reviewer that takes no other, and extra reviewers take it too. When the repository has `paths.perspectives/<perspective>.md`, give it to that perspective's reviewer.
    - Point each reviewer to the change and to what it must satisfy: the pull request at its reviewed commit, and each file by its path. Copy none of their text into its brief. Never give it the author's reasoning, the other reviewers' reports or your own conclusions: an independent reviewer is the point of the panel.
    - Reviewers work read-only, and report each finding as "What a finding is" says.
    - When the role's harness cannot be started, use this session's harness and say so in the round file. When no helper can be started at all, review each perspective in turn yourself, and say in the round file that the panel was not independent. A re-check you do yourself in the re-checker's place says the same in its file.

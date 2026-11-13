@@ -16,7 +16,7 @@ The project manager's memory is its log: two files in `paths.notes`. What is rea
 
 | File | Holds | Read |
 |---|---|---|
-| The state, `pm-<roadmap id>.md`, in the shape of [assets/log.md](assets/log.md) | Where things stand now: the goal; each worker's epic, session, worktree, branch, brief, pull request and stage; the queue for what the workers share, such as a credential slot; what waits for whom; the corrections and choices still in force; what comes next | When the session starts, after every compaction and at each turn of the loop |
+| The state, `pm-<roadmap id>.md`, in the shape of [assets/log.md](assets/log.md) | Where things stand now: the goal; each worker's epic, session, worktree, branch, brief, pull request and stage, one of the stages in `siesta-plan`; the queue for what the workers share, such as a credential slot; what waits for whom; the corrections and choices still in force; what comes next | When the session starts, after every compaction and at each turn of the loop |
 | The history, `pm-<roadmap id>-history.md`, in the shape of [assets/history.md](assets/history.md) | What happened, one dated entry each: the project manager's choices with their reasons, the human's corrections in their words, each merge, and what left the state | Only to find a past entry, by searching it |
 
 - **Rewrite the state in place** whenever any of it changes, and keep it to about 150 lines at most. A merged epic's row leaves it, and a detail stays in the file the state points to.
@@ -40,11 +40,11 @@ The second half lets the session stop while it waits for the human.
    - the checkpoint.
 
    When the human has answered, take their answers with `siesta-checkpoint` first.
-2. **Move each active epic on.** Find its next step and who takes it:
+2. **Move each active epic on.** Find its stage, as `siesta-plan` defines it, its next step and who takes it, and write the stage in the log:
    - a pull request is ready: review it with `siesta-review`, as the lead;
    - a review has closed: merge it with `siesta-merge`;
    - one of your own pull requests only records, as `siesta-merge` says: merge it with that skill, without a review round;
-   - a blocker is resolved: have its author clear `blocked` in the spec and report, then resume its existing stage;
+   - a blocker is resolved: have its author clear `blocked` in the spec and report, then resume the stage it kept;
    - a worker waits for you: answer it;
    - a worker's session ended before its work did: reconcile its assignment and apply the no-progress rule below before resuming it with `siesta-launch-worker`.
 3. **Start new epics.** Reconcile the worker assignments as `siesta-launch-worker` says; specs on integration alone do not show all occupied slots. In the roadmap's order, start each planned epic and spike of an accepted phase that can start, with `siesta-launch-worker`, while slots are free. A spike whose verdict other epics wait for goes first.

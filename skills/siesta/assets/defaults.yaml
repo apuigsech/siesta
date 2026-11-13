@@ -16,8 +16,8 @@ roles:                            # harness, model and effort per role; current:
   pm:        { harness: current, model: current, effort: current }   # effort: one value, or one per activity: { default, plan, review }
   worker:    { harness: current, model: current, effort: current }
   spike:     { harness: current, model: current, effort: current }
-  reviewer:  { harness: current, model: current, effort: current, perspectives: {} }   # effort: one value, or one per stage: { rounds, closing }; perspectives: an effort pinned for one perspective, such as { security: max }
-  rechecker: { harness: current, model: current, effort: current }   # effort: one value, or one per stage: { rounds, closing }
+  reviewer:  { harness: current, model: current, effort: current, perspectives: {} }   # effort: one value, or one per pass: { rounds, closing }; perspectives: an effort pinned for one perspective, such as { security: max }
+  rechecker: { harness: current, model: current, effort: current }   # effort: one value, or one per pass: { rounds, closing }
 
 paths:
   product: docs/purpose.md

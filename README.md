@@ -46,7 +46,7 @@ Siesta works in three phases.
 | Re-checker | Checks, read-only, that the fixes of a review round hold |
 
 Each role can run on its own harness, model and effort. The project manager's effort can differ by
-activity, and a reviewer's by stage of the review.
+activity, and a reviewer's by pass of the review.
 
 ## Install
 
@@ -83,8 +83,8 @@ on their own: the skills load each other, and a worker starts from a brief that 
 
 The Claude plugin includes a native **Pulse** pane. Open it with `/siesta-panel`, or
 `/siesta-panel <roadmap-id>` to select a roadmap. It shows delivered epics, questions and hypotheses
-in the checkpoint, active work and its blockers, phase criteria, recorded review stages and
-assigned capacity. Expand an item to read it; expand Details for ready work and source paths.
+in the checkpoint, active work with its stage and blockers, phase criteria, and the epics in
+review. Expand an item to read it; expand Details for ready work and source paths.
 
 It refreshes once a minute while open and on demand, without a model turn. Refresh reads local Git
 refs, worker files and Siesta's configured paths; it does not fetch, write a report, answer questions
@@ -310,7 +310,7 @@ autonomy confirmed through setup before those values are written explicitly.
 
 | Section | Sets |
 |---|---|
-| `roles` | Harness, model and effort for each role; the effort may differ by activity or by stage of a review |
+| `roles` | Harness, model and effort for each role; the effort may differ by activity or by pass of a review |
 | `paths` | Where each document, the plan, the checkpoint, the notes and the worktrees live |
 | `naming` | Ids, branches, session titles, commit style |
 | `git` | The integration branch, signing, who merges and how |
@@ -423,7 +423,7 @@ configured, through an approved setup change. Preserve unrelated workflow jobs.
   needs your yes.
 - **`autonomy` is yours.** The agents never change it. A change goes to you as a question, and only
   a `siesta-setup` conversation writes the text you approved.
-- **Recovery.** Resuming a worker uses its existing assignment and actual PR stage. A repeated
+- **Recovery.** Resuming a worker uses its existing assignment and its actual stage. A repeated
   failure without progress gets one retry, then waits in the checkpoint while independent work
   continues. Test mutations run in disposable copies. Dependencies must merge before their
   dependants start.
