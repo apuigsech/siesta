@@ -67,7 +67,7 @@ What the skills need:
   - the harness's own way, when it has one;
   - a command of yours, such as one that opens a terminal tab running the harness's CLI;
   - or you start each one from the exact command the project manager gives you.
-- **Node 20 or later,** only for the GitHub sync add-on.
+- **Node 20 or later,** for the GitHub sync add-on and the status panel's reader.
 
 You rarely call a skill by name. Say what you want, and the harness loads the skill whose
 description matches. To call one by name:
@@ -78,6 +78,24 @@ description matches. To call one by name:
 Claude Code keeps `siesta-launch-worker` and `siesta-work-epic` out of its `/` menu, since only the
 agents use them. Codex and Pi have no way to hide a single skill. The agents can load every skill
 on their own: the skills load each other, and a worker starts from a brief that names its skill.
+
+### Claude status panel
+
+The Claude plugin includes a native **Pulse** pane. Open it with `/siesta-panel`, or
+`/siesta-panel <roadmap-id>` to select a roadmap. It shows delivered epics, questions and hypotheses
+in the checkpoint, active work and its blockers, phase criteria, recorded review stages and
+assigned capacity. Expand an item to read it; expand Details for ready work and source paths.
+
+It refreshes once a minute while open and on demand, without a model turn. Refresh reads local Git
+refs, worker files and Siesta's configured paths; it does not fetch, write a report, answer questions
+or launch work. The timestamp and integration commit identify the snapshot. Missing inputs and
+ambiguous worker branches are reported instead of guessed. The full `siesta-status` skill still
+fetches, investigates inconsistencies and writes its report.
+
+Requires a Claude Code build with mods and `node` on its process PATH. Verified with Claude Code
+2.1.322. Desktop draws native bars; the terminal uses text bars. There is no React, Vue runtime or
+build step: Claude mods expose native elements, without a browser DOM for Vue to mount into.
+See [the adapter guide](adapters/claude/README.md) for local loading and data conventions.
 
 ## The skills
 
@@ -419,6 +437,7 @@ configured, through an approved setup change. Preserve unrelated workflow jobs.
 
 ```text
 skills/                          the skills, one folder each, shared by every harness
+adapters/claude/                  Claude's native status pane, loaded only by its manifest
 tests/                           tests of the skills' scripts
 .claude-plugin/                  Claude Code: the plugin and its marketplace
 .codex-plugin/                   Codex: the plugin

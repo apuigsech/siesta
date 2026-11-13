@@ -9,6 +9,11 @@ description: Reports how a Siesta roadmap stands, with what was delivered since 
 
 **Outcome:** in a screen or two, the human sees where the roadmap stands, what changed since the last status and what needs them, and can trust every number, because each one was counted.
 
+For a quick read-only snapshot, `node scripts/read-status.mjs --root <checkout>` (the script beside
+this skill) emits JSON from local refs and the effective configuration. It neither fetches nor
+saves a report. Treat its warnings and unavailable fields as gaps to investigate; it does not
+replace the gathering and verification below.
+
 ## Gather
 
 1. Fetch `origin`. The record is the integration branch, and an active epic's progress is on its own branch.

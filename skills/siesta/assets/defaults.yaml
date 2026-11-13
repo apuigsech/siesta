@@ -90,7 +90,7 @@ checkpoints:
   status_first: true              # the checkpoint, and the message that it is open, begin with a status
 
 status:
-  progress: criteria              # tasks | criteria | mixed
+  progress: mixed                 # tasks | criteria | mixed
   meetings: on-demand             # on-demand, or times such as ["09:00", "14:00"]
 
 sessions:
