@@ -2,7 +2,7 @@
   "name": "siesta",
   "hooks": "./adapters/claude/hooks.json",
   "types": "./adapters/claude/types.d.ts",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "You nap. They ship. Long, autonomous agent work: define in depth, let agents deliver, decide at checkpoints.",
   "author": {
     "name": "Albert Puigsech Galicia"
