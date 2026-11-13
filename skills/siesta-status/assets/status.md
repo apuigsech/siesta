@@ -20,7 +20,7 @@ Roadmap: <epics completed> of <epics> epics completed.
 
 | Epic | Stage | Progress | Next |
 |---|---|---|---|
-| <title> | <building, in review round n, waiting for Q-n, or blocked: why> | <checked> of <all> criteria | <the next step, and who takes it> |
+| <title> | <its stage from `siesta-plan`, such as review round n or waits for the human — Q-n; and blocked: why, when it is> | <checked> of <all> criteria | <the next step, and who takes it> |
 
 ## Next
 

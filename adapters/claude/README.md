@@ -45,7 +45,11 @@ nothing, makes no network requests, and runs Git with argument vectors rather th
 - **Working now:** the session id in the Workers table's Session cell. In Claude Desktop the pane
   asks the app's session server every 10 seconds whether that session is running a turn, and its
   card's border beats while it is. Elsewhere nothing answers, and no card beats.
-- **Reviews:** the active assignment's recorded stage when it names review or recheck. No live
+- **Stage:** after each active epic's title, as «Title (stage)», one of the stages `siesta-plan`
+  defines. It comes from the Stage cell of the coordinator's Workers table; when that names no
+  stage, from the review files in `paths.notes` for the epic's pull request, and `building` when
+  it has none. A blocked epic keeps its stage, and its activity dot turns amber; a paused one's dot is muted.
+- **Reviews:** the active epics whose stage is a review round, its fixing or its re-check. No live
   host or CI status is inferred, and there is no estimated completion time without evidence.
 - **Checkpoint:** `paths.checkpoint`, relative to the main checkout or an explicitly configured
   absolute path. A relative path not found in the main checkout is looked for in the checkout the

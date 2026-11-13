@@ -27,6 +27,7 @@ Count every number; never estimate one.
 | Number | How |
 |---|---|
 | An epic's progress | With `status.progress: criteria`, its acceptance criteria checked, `- [x]`, over all of them, in its spec. With `tasks`, the same over the tasks in its plan. With `mixed`, both. An active epic is counted on its branch, every other on the integration branch |
+| An epic's stage | One of the stages in `siesta-plan`, from the project manager's log; when the log has none, from the review files and the pull request |
 | A phase's progress | Its completion criteria checked in the roadmap, over all of them, and its epics completed over its epics |
 | The roadmap's progress | Its epics completed over its epics, cancelled ones left out |
 | Delivered since the last status | The epics that became `completed` on the integration branch after its date, read from the history |

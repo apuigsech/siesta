@@ -34,6 +34,20 @@ Write statuses with these words, in the epic's frontmatter and in the roadmap's 
 
 Blocking is separate from lifecycle status: `blocked: null`, or `blocked: { since: YYYY-MM-DD, reason: "what prevents progress and what unblocks it" }`. Keep the status (`planned`, `active`, etc.) while blocked; preserve `since` until that blocker is resolved. Clear the field when it is resolved, and before completion or cancellation. Whoever finds the blocker records it in the spec and report; for an unstarted epic, the PM records it through a plan PR. Do not duplicate ordinary `depends_on` or `waits_for` entries as manual blockers. A worker with a blocker works only on independent steps and does not merge its delivery until the blocker is cleared.
 
+An `active` epic or spike is also at one stage, which says who has the work now. Stages are not statuses: the spec does not hold them, and the project manager's log does, in its Workers table, as the first words of the Stage cell, optionally followed by ` — ` and a detail. Each stage leaves a file behind, so that a reader can tell it without the log. The review files are those of `siesta-review`, in `paths.notes`.
+
+| Stage | Means | What marks it |
+|---|---|---|
+| `building` | The worker builds; no pull request yet | No pull request in the log or in `delivery.urls` |
+| `review round <n>` | The panel reviews round n | A pull request, and no `review-<target>-r<n>.md` yet |
+| `fixing round <n>` | The author answers round n | `review-<target>-r<n>.md` with changes requested, and no `-response.md` |
+| `re-check round <n>` | The fixes of round n are checked | `review-<target>-r<n>-response.md`, and no `-recheck.md` |
+| `ready to merge` | The review is closed | The last round has nothing left open, or its re-check holds every fix and finds nothing new |
+| `waits for the human` | A merge or a decision waits for the human | The log, with the checkpoint's id as its detail, such as `waits for the human — Q-12` |
+| `paused` | The human paused it; nobody works on it until they resume it | The log alone, with the reason as its detail, such as `paused — waits for the pricing launch`. Not `blocked`, and the spec does not change |
+
+A re-check that finds something new leads to `review round <n+1>`. A checkpoint id alone, without `waits for the human`, names no stage. A blocker is not a stage: the epic keeps its stage while `blocked` is set, and resumes it once cleared. A merged epic is `completed` on the integration branch and has no stage.
+
 Legacy `status: blocked` remains readable by the sync add-on. Before resuming, recover the prior status from history or the assignment, and move the blocker to the field. If the prior status or date is unknown, ask instead of inventing it. Do not automatically migrate historical specs.
 
 Optional epic and spike fields:

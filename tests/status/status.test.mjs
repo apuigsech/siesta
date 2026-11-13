@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { readStatus, countChecks, parseCheckpoint, parsePhases, parseWorkers } from '../../skills/siesta-status/scripts/read-status.mjs';
+import { readStatus, countChecks, parseCheckpoint, parsePhases, parseWorkers, normaliseStage, stageFromReviews } from '../../skills/siesta-status/scripts/read-status.mjs';
 
 const roadmap = (id = 'base') => `---\nid: ${id}\ntitle: ${id}\nstatus: accepted\n---\n# ${id}\n## Phase — Foundation\n\n**Slug:** foundation\n\n**Status:** accepted\n\nCompletion criteria:\n- [ ] Works\n`;
 const spec = (id, status = 'planned', extra = '', road = 'base') => `---\nid: ${id}\ntitle: ${id}\nroadmap: ${road}\nphase: foundation\nstatus: ${status}\ndepends_on: []\nwaits_for: []\n${extra}\n---\n# ${id}\n## Acceptance criteria\n- [x] First\n- [ ] Second\n## Other\n- [x] Not a criterion\n`;
@@ -102,7 +102,8 @@ test('paused assignments occupy capacity across roadmaps and the PM record selec
   const status = f.read();
   assert.equal(status.capacity.used, 2);
   assert.equal(status.roadmaps[0].active[0].branch, 'feat/search-2');
-  assert.equal(status.roadmaps[0].active[0].stage, 'Paused: Q-1');
+  assert.equal(status.roadmaps[0].active[0].stageRecorded, 'Paused: Q-1');
+  assert.deepEqual(status.roadmaps[0].active[0].stage, { key: 'paused', round: null, detail: 'Q-1', from: 'log' });
   assert.equal(status.roadmaps[0].ready.length, 0);
 });
 
@@ -152,4 +153,74 @@ test('absent setup and records outside Git fail explicitly; reading never change
   assert.throws(() => f.read(), /Integration records must be inside/);
   rmSync(join(f.root, '.siesta/config.yaml'));
   assert.throws(() => f.read(), /not set up/);
+});
+
+test('the log names a stage by its words, with an optional detail; text that names none gives null', () => {
+  const stage = text => { const value = normaliseStage(text); return value && [value.key, value.round, value.detail]; };
+  assert.deepEqual(stage('building'), ['building', null, null]);
+  assert.deepEqual(stage('review round 2 — panel of 3'), ['review', 2, 'panel of 3']);
+  assert.deepEqual(stage('**fixing round 1**'), ['fixing', 1, null]);
+  assert.deepEqual(stage('re-check round 3'), ['recheck', 3, null]);
+  assert.deepEqual(stage('Recheck r2'), ['recheck', 2, null]);
+  assert.deepEqual(stage('ready to merge'), ['ready', null, null]);
+  assert.deepEqual(stage('waits for the human — Q-12'), ['human', null, 'Q-12']);
+  assert.deepEqual(stage('espera al humano — Q-9'), ['human', null, 'Q-9']);
+  assert.deepEqual(stage('waits for the human Q-5'), ['human', null, 'Q-5']);
+  assert.deepEqual(stage('paused — waits for the pricing launch'), ['paused', null, 'waits for the pricing launch']);
+  assert.deepEqual(stage('en pausa — lo pidió el PO'), ['paused', null, 'lo pidió el PO']);
+  assert.equal(normaliseStage('Q-221 a'), null, 'a checkpoint id alone names no stage');
+  assert.equal(normaliseStage('resumed after Q-221 a'), null);
+  assert.equal(normaliseStage('Waiting for q-4'), null);
+  assert.deepEqual(stage('pull request open'), ['review', null, null]);
+  assert.equal(normaliseStage('—'), null);
+  assert.equal(normaliseStage('something else'), null);
+  assert.equal(normaliseStage(''), null);
+});
+
+test('without the log, the stage comes from the review files of the pull request', t => {
+  const f = fixture(t);
+  const pr = 'https://github.com/team/project/pull/7';
+  const at = name => join(f.notes, `review-pr-7-${name}.md`);
+  const round = (outcome, findings = '') => `# Review\n\n- **Pass:** a round of the panel, at the high effort.\n- **Outcome:** ${outcome}.\n\n## Findings\n\n${findings}\n## Notes\n\n- None.\n`;
+  const stage = (options) => { const value = stageFromReviews(f.notes, pr, options); return [value.key, value.round]; };
+  assert.deepEqual([stageFromReviews(f.notes, null).key], ['building']);
+  assert.deepEqual(stage(), ['review', 1]);
+  f.put(at('r1'), round('changes requested', '### F-1 · high · Wrong\n'));
+  assert.deepEqual(stage(), ['fixing', 1]);
+  f.put(at('r1-response'), '# Response\n## F-1 · Fixed\n');
+  assert.deepEqual(stage(), ['recheck', 1]);
+  f.put(at('r1-recheck'), '# Re-check\n## F-1 · Holds\n\n## New findings\n\n### F-2 · medium · Another\n');
+  assert.deepEqual(stage(), ['review', 2]);
+  f.put(at('r2'), round('changes requested', '### F-2 · medium · Another\n'));
+  f.put(at('r2-response'), '# Response\n## F-2 · Fixed\n');
+  f.put(at('r2-recheck'), '# Re-check\n## F-2 · Partial\n\n## New findings\n\nNone.\n');
+  assert.deepEqual(stage(), ['review', 3]);
+  f.put(at('r3'), round('nothing left open'));
+  assert.deepEqual(stage(), ['ready', 3]);
+  assert.deepEqual(stage({ closingPass: true }), ['review', 4], 'a closing pass must still read the change');
+  f.put(at('r4'), round('nothing left open').replace('a round of the panel', 'the closing pass'));
+  assert.deepEqual(stage({ closingPass: true }), ['ready', 4]);
+  f.put(at('r4'), round('changes requested', '### F-3 · low · Late\n').replace('a round of the panel', 'the closing pass'));
+  f.put(at('r4-response'), '# Response\n## F-3 · Fixed\n');
+  f.put(at('r4-recheck'), '# Re-check\n## F-3 · Holds\n\n## New findings\n\nNone.\n');
+  assert.deepEqual(stage(), ['ready', 4]);
+});
+
+test('an active epic gets its stage from the log first, then from its review files; a blocked one keeps it', t => {
+  const f = fixture(t);
+  f.file('.siesta/epics/search/spec.md', spec('search', 'active', 'blocked: { since: 2026-11-11, reason: "No access" }\ndelivery:\n  urls: ["https://github.com/team/project/pull/9"]'));
+  f.file('.siesta/epics/docs/spec.md', spec('docs', 'active'));
+  f.file('.siesta/epics/later/spec.md', spec('later', 'planned'));
+  f.commit();
+  f.put(join(f.notes, 'review-pr-9-r1.md'), '# Review\n- **Outcome:** changes requested.\n## Findings\n### F-1 · high · Wrong\n## Notes\n');
+  const log = cell => f.put(join(f.notes, 'pm-base.md'), `# PM\n## Workers\n| Epic | Session | Worktree and branch | Brief | Pull request | Stage | Since |\n|---|---|---|---|---|---|---|\n| docs | Worker | \`/tmp/d\`, \`feat/docs\` | brief | — | ${cell} | 2026-11-11 |\n`);
+  log('waits for the human — Q-3');
+  let epics = Object.fromEntries(f.read().roadmaps[0].active.map(epic => [epic.id, epic]));
+  assert.deepEqual(epics.search.stage, { key: 'fixing', round: 1, detail: null, from: 'reviews' });
+  assert.equal(epics.search.blocked.reason, 'No access');
+  assert.deepEqual(epics.docs.stage, { key: 'human', round: null, detail: 'Q-3', from: 'log' });
+  assert.equal(epics.later, undefined);
+  log('—');
+  epics = Object.fromEntries(f.read().roadmaps[0].active.map(epic => [epic.id, epic]));
+  assert.deepEqual(epics.docs.stage, { key: 'building', round: null, detail: null, from: 'pull request' });
 });
