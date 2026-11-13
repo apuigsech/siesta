@@ -4,8 +4,8 @@ Siesta packages a way of working with coding agents as skills that every harness
 Code, Codex, Pi, OpenCode and others. [README.md](README.md) says what the method is and how each
 harness installs it.
 
-**Status.** Fifteen skills in `skills/`, one script with its tests (`siesta-sync-github`), and the
-manifests for each harness. No agents, hooks or adapters yet.
+**Status.** Fifteen skills in `skills/`, scripts with tests for GitHub sync and read-only status,
+and the manifests for each harness. `adapters/claude/` provides the native status pane. No agents yet.
 
 ## Rules
 
@@ -51,3 +51,7 @@ Run each harness's own check before a pull request:
 
 Never run these against your own harness configuration: an empty `CODEX_HOME` and a project-local
 Pi install keep the checks from changing it.
+
+For changes to `adapters/claude/`, also run `claude plugin test .`. Its offline UI tests mount the
+pane on terminal, desktop, VS Code and mobile; they validate the element tree and interactions,
+not the host's painting. Keep generated `.claude-plugin/types/` out of version control.

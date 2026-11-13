@@ -1,6 +1,6 @@
 {
   "name": "siesta",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "You nap. They ship. Long, autonomous agent work: define in depth, let agents deliver, decide at checkpoints.",
   "repository": {
