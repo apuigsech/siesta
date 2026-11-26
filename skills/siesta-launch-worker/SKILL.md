@@ -6,7 +6,7 @@ user-invocable: false
 
 # Siesta launch worker
 
-**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration (`roles`, `paths`, `naming`, `git`, `execution`, `sessions`) and its moments.
+**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration (`roles`, `paths`, `naming`, `git`, `execution`, `sessions`) and its moments. What concerns the item's own work, `roles.worker`, `roles.spike` and `execution.before_pr` among them, is read with its profile.
 
 **Outcome:** the worker runs in a session of its own that the human can follow, in its own worktree, on the epic's branch, pushed with the spec `active`, and with a brief that tells it everything particular to this epic. The project manager's log says where it is.
 
@@ -21,6 +21,7 @@ A new epic or spike starts when all of these hold:
 - its `blocked` field is empty, and it has no unresolved legacy `status: blocked`;
 - every open question in its `waits_for` is answered;
 - what its spec's "Waits for the human" needs before work begins, such as an account, is there;
+- the profile its spec names, if any, can be read on the integration branch, as the configuration reference says;
 - the reconciled assignments leave a free slot, and with `parallel_when: disjoint-files`, its `touches` share nothing with an assigned epic's.
 
 Always start from the integration branch. A reviewed dependency that has not merged is still a dependency to wait for.
@@ -39,11 +40,11 @@ The branch is named by `naming.branch`. In the worktree, change the spec's statu
 
 ## 3. The brief
 
-Write `paths.notes/brief-<epic id>.md` in the shape of [assets/brief.md](assets/brief.md), in `project.language.docs`. The `siesta-work-epic` skill holds the rules every worker follows, so the brief holds only what is particular to this epic: where it is, what to read, what is already known, its own limits and how to reach the project manager. Name decisions and open questions by id, and give the numbers already taken on open branches. Point to each file by its path, and to a passage by its heading, and copy none of their text into the brief: the brief stays in the worker's context for the whole epic.
+Write `paths.notes/brief-<epic id>.md` in the shape of [assets/brief.md](assets/brief.md), in `project.language.docs`. The `siesta-work-epic` skill holds the rules every worker follows, so the brief holds only what is particular to this epic: where it is, what to read, what is already known, its own limits and how to reach the project manager. Name decisions and open questions by id, and give the numbers already taken on open branches. Point to each file by its path, and to a passage by its heading, and copy none of their text into the brief: the brief stays in the worker's context for the whole epic. Name the item's profile, or `default`, and what it changes that the worker acts on: its `execution.before_pr` and `execution.mutation_check`.
 
 ## 4. The session
 
-Start it with the harness, model and effort of `roles.spike` for a spike and of `roles.worker` otherwise, in the worktree, titled by `naming.session_title`. The prompt only points to the brief and contains no `!`, which some shells expand:
+Start it with the harness, model and effort of `roles.spike` for a spike and of `roles.worker` otherwise, read with the item's profile, in the worktree, titled by `naming.session_title`. The prompt only points to the brief and contains no `!`, which some shells expand:
 
 > Use the siesta-work-epic skill: read and carry out the brief in '<brief path>'.
 

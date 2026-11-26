@@ -32,13 +32,13 @@ Count every number; never estimate one.
 | The roadmap's progress | Its epics completed over its epics, cancelled ones left out |
 | Delivered since the last status | The epics that became `completed` on the integration branch after its date, read from the history |
 
-Show a blocker beside its lifecycle status, with its `since` date and reason; a blocked active epic is still counted from its branch. A legacy `status: blocked` needs its prior state recovered before its progress can be classified. Show delivery links for completed epics when recorded.
+Show an epic's profile beside its title when it names one. Show a blocker beside its lifecycle status, with its `since` date and reason; a blocked active epic is still counted from its branch. A legacy `status: blocked` needs its prior state recovered before its progress can be classified. Show delivery links for completed epics when recorded.
 
 Next to each figure, the human should be able to tell what it counts: "3 of 4 criteria", not "75 %" alone.
 
 ## Check what the record claims
 
-Where the record and the repository disagree, say so in a line each: an epic marked `completed` whose work is not on the integration branch, a phase marked `completed` with a criterion unchecked, a branch with no commit for days. A roadmap table behind its specs is not one: it catches up when the phase closes. Say what will be done about each, and do it through its own skill. A status reports. It never changes the plan or drops a checkpoint item the human has not answered.
+Where the record and the repository disagree, say so in a line each: an epic marked `completed` whose work is not on the integration branch, a phase marked `completed` with a criterion unchecked, a branch with no commit for days, a profile a spec names that cannot be read. A roadmap table behind its specs is not one: it catches up when the phase closes. Say what will be done about each, and do it through its own skill. A status reports. It never changes the plan or drops a checkpoint item the human has not answered.
 
 ## Write
 

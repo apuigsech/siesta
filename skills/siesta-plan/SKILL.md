@@ -53,6 +53,7 @@ Legacy `status: blocked` remains readable by the sync add-on. Before resuming, r
 Optional epic and spike fields:
 - `delivery.urls`: the pull-request URLs contributing to the delivery, in order. An older `delivery.url` is also read; when editing it, carry its value into the list without losing any links. The worker records each URL before review. Only completed epics on integration are described as delivered.
 - `type`: a lowercase Conventional Commits type such as `feat`, `fix`, `test` or `docs`; absent or null means infer it from the work. With `naming.commits: conventional`, use it for the branch's `{type}` and the delivery PR title. Individual commits describe their own changes. With `free`, it does not constrain titles or messages.
+- `profile`: the name of a profile in `.siesta/profiles/`, which sets how rigorously the item's work is done and checked, as [the configuration reference](../siesta/references/config.md#profiles) says; absent, `null` or `default` means the repository's configuration. Choose it from what the item touches: a profile that lowers the review suits work that cannot hurt permissions, data or money, and a sensitive item keeps the repository's or takes a stricter one.
 - `slug`: optional for custom IDs; otherwise use the id with a leading `YYYYMMDD-` removed. It is lowercase words joined by hyphens. Epics and spikes not yet completed or cancelled must have distinct slugs across roadmaps, since their worktrees use that name. Before launch, also check actual branch and worktree destinations against existing assignments and resources; never overwrite or reuse another epic's resources. Historical slugs can be reused once their resources are gone.
 
 A phase is `proposed` until the human accepts it, then `accepted` with the date and their words, and `completed` when its completion criteria hold. A roadmap is `proposed` until its first phase is accepted, then `active`, and `completed` when every phase is completed and the human says it is done, with the date and their words.
@@ -70,6 +71,7 @@ Read the product, the architecture, the features and their designs, the decision
 - **A doubt that could change the plan** is a spike: its question, what to try, the result that decides it, and the fallback, which becomes a proposed decision if the result does not come.
 - **A point only the human can settle** is an open question, listed by its id in the epic's `waits_for`. Write the epic with the open question's proposal, and say in the epic that the answer may change it. `waits_for` holds only open questions' ids; anything else the epic needs from the human goes in its spec's last section.
 - Everything the epic waits for from the human, by the kinds in `autonomy.waits_for_human`, goes in its spec, so the project manager knows before starting it.
+- **A profile** goes in an item's spec when the repository has profiles and the item should not run with the repository's configuration. Show it beside the item in the roadmap's table, and check that its file exists.
 
 ## 3. Ask
 
@@ -77,12 +79,12 @@ When the human is in the conversation, ask what the plan needs with `siesta-inte
 
 ## 4. Review and accept
 
-Have the plan reviewed with the `siesta-review` skill and the panel in `review.plan`. Where that skill is not available, say that the review is pending. Then put each phase to the human. With their yes, mark the phase accepted, with the date and their words, and its epics `planned`.
+Have the plan reviewed with the `siesta-review` skill and the panel in `review.plan`. Where that skill is not available, say that the review is pending. Then put each phase to the human, naming each item that takes a profile and which. With their yes, mark the phase accepted, with the date and their words, and its epics `planned`.
 
 ## 5. Change the plan
 
 - A new epic or spike starts `proposed`, and its phase takes it in only with the human's yes.
-- Changing an accepted epic's scope or acceptance criteria, or cancelling it, is `scope-change`: it waits for the human.
+- Changing an accepted epic's scope, its acceptance criteria or its profile, or cancelling it, is `scope-change`: it waits for the human.
 - A cancelled epic keeps its file, with why.
 - When a decision answers an open question, update the epics that waited for it.
 

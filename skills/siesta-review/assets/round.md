@@ -3,7 +3,8 @@
 - **What:** <the pull request and its branch at the reviewed commit, or the roadmap>, for <its epic or its phases>.
 - **Validation base:** <integration commit used by the checks, for a pull request>.
 - **Pass:** <a round of the panel, or the closing pass>, at the <effort> effort<; when every round runs at the `closing` effort, why>.
-- **Panel:** <how many reviewers; when `reviewers` has classes, the class of this change and the reason; any substitution; or "not independent", when the lead reviewed alone, and why>.
+- **Profile:** <the item's profile, or `default`; for a plan or a pull request outside any item, `none`>.
+- **Panel:** <how many reviewers; when `reviewers` has classes or the item has a profile, the class of this change and the reason; for a security change under a profile, what of the profile was set aside; any substitution; or "not independent", when the lead reviewed alone, and why>.
 - **Blocking:** <the blocking severities>. **Rounds:** <n> of <max_rounds>.
 - **Outcome:** <changes requested, or nothing left open>.
 

@@ -6,7 +6,7 @@ user-invocable: false
 
 # Siesta work epic
 
-**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration and the rules every session holds to. `siesta-decide` records decisions, and `siesta-review` says how an author answers a round.
+**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration and the rules every session holds to. Read it with the profile your spec names, which the brief also names: it may change `execution.before_pr` and `execution.mutation_check`. `siesta-decide` records decisions, and `siesta-review` says how an author answers a round.
 
 **Outcome:** the epic's pull request is open against the integration branch, with each acceptance criterion verified and its evidence in the report. Nothing that waits for the human was done without their yes, and the project manager knows where the work stands.
 
@@ -26,6 +26,7 @@ Write `plan.md` beside the spec, or check the one there against the repository a
 - Commit as `naming.commits` says. Sign as `git.signed_commits` says, every commit before it is pushed.
 - Never rewrite commits that are already pushed. Before final validation for a merge, fetch and merge in the current integration branch when it has moved; a routine push does not require that update. Record the validated head and integration commit with the checks in the report.
 - Check a criterion in the spec only once it is verified, and write its evidence in the report at the same time.
+- Leave the spec's `profile` and the files in `.siesta/profiles/` as they are: a change to them on your branch would not apply to your own review. When the work turns out to touch what its profile does not suit, such as permissions or customer data under a profile that lowers the review, tell the project manager: changing it is a scope change.
 - A lasting choice about how the product or the system will be is a decision. Record it with `siesta-decide` as Proposed, with the next free number across the integration branch and every open branch.
 - A missing fact whose choice can be undone: take the hypothesis, write it in the report and go on. When the choice cannot be undone, ask the project manager and meanwhile build what does not depend on it.
 - Work the epic needs that is outside its scope, or a fault in another epic's work: tell the project manager instead of building it here.

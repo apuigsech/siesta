@@ -302,9 +302,11 @@ The configuration combines these files, from lowest to highest precedence:
 1. Siesta's defaults.
 2. Your machine's file: `~/.config/siesta/config.yaml`.
 3. The repository's file: `.siesta/config.yaml`, committed.
-4. The checkout's file: `.siesta/config.local.yaml`, never committed.
+4. A profile, `.siesta/profiles/<name>.yaml`, committed: only for the work of an epic or a spike
+   that names it. See [Profiles](#profiles).
+5. The checkout's file: `.siesta/config.local.yaml`, never committed.
 
-`autonomy` ignores machine and checkout overrides. Setup stores all its approved values in the
+`autonomy` ignores machine, profile and checkout overrides. Setup stores all its approved values in the
 repository, so future defaults cannot change them. Older sparse configurations need their effective
 autonomy confirmed through setup before those values are written explicitly.
 
@@ -341,6 +343,39 @@ Each round's file records what its reviewers cost and who found each finding. `s
 them by effort, so the next roadmap is tuned from figures. The wording of a pull request's body
 opens no round: the project manager says it right in the merge message.
 
+### Profiles
+
+Not every epic needs the same rigor. A profile is a small file that changes how one epic or spike is
+built and reviewed, and each item chooses one in its spec:
+
+```yaml
+# .siesta/profiles/light.yaml
+review:
+  pull_request:
+    reviewers: 1
+    recheck: blocking
+roles:
+  reviewer: { effort: high }
+execution:
+  mutation_check: false
+```
+
+```yaml
+# in an epic's spec.md frontmatter
+profile: light        # absent, null or default: the repository's configuration
+```
+
+- A profile sets only the item's own work: `roles.worker`, `roles.spike`, `roles.reviewer`,
+  `roles.rechecker`, `review.pull_request`, `execution.before_pr` and `execution.mutation_check`.
+  Anything else in it, `autonomy` above all, is ignored and reported.
+- A security change is reviewed as if there were no profile: the repository's panel, efforts,
+  blocking severities and re-checks. A profile can only give it more reviewers.
+- Profiles and each item's choice are read from the integration branch. A pull request that changes
+  a profile is reviewed with the profile as it was before.
+- The roadmap shows each item's profile, so the plan's review and your acceptance of a phase see it.
+  Changing an accepted epic's profile waits for you, like any other change of scope.
+- A profile that cannot be read stops the work that needs it; nothing falls back silently.
+
 ## Where things live
 
 | What | Default place |
@@ -349,6 +384,7 @@ opens no round: the project manager says it right in the merge message.
 | Decisions and open questions | `docs/decisions.md`, `docs/open-questions.md` |
 | Roadmaps | `.siesta/roadmaps/<id>.md` |
 | Epics and spikes | `.siesta/epics/<id>/spec.md`, with the worker's `plan.md` beside it |
+| Profiles | `.siesta/profiles/<name>.yaml`, beside `.siesta/config.yaml`; their place is fixed |
 | The checkpoint | `.siesta/checkpoint.md`, in the main checkout, never committed |
 | Briefs, reports, review rounds, statuses, logs and retros | `~/.local/state/siesta/<repo>/notes/`, outside every worktree |
 | Workers' worktrees | `~/.local/state/siesta/<repo>/worktrees/` |

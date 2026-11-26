@@ -7,6 +7,7 @@ You are the worker of the <epic or spike> `<epic id>`. Use the `siesta-work-epic
 - Worktree `<path>`, on the branch `<branch>`, pushed, cut from `<base>` at `<commit>`.
 - The spec is `active` since <date>.
 - Slug `<slug>`, branch type `<type>` (from the spec or inferred at launch).
+- Profile `<the spec's profile, or default>`<: what it changes that you act on, such as the checks before the pull request or the mutation check>.
 
 ## What to read
 
@@ -23,7 +24,7 @@ You are the worker of the <epic or spike> `<epic id>`. Use the `siesta-work-epic
 
 ## Finishing
 
-- Before the pull request: <each command of `execution.before_pr`; or "the repository's own checks">.
+- Before the pull request: <each command of `execution.before_pr`, read with the profile; or "the repository's own checks">.
 - The pull request goes against `<integration branch>`<, with `<naming.pr_reference>`>. Don't merge it.
 - Your report: `<paths.notes>/report-<epic id>.md`.
 

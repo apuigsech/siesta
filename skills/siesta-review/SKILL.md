@@ -6,7 +6,7 @@ argument-hint: "[pull request number, or roadmap id]"
 
 # Siesta review
 
-**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration: `review.pull_request` or `review.plan`, `roles.reviewer`, `roles.rechecker` and `paths.notes`.
+**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration: `review.pull_request` or `review.plan`, `roles.reviewer`, `roles.rechecker` and `paths.notes`. A pull request of an epic or a spike is reviewed with the configuration read with that item's profile, as the integration branch holds both the spec and the profile's file. A pull request outside any item, and a plan, are reviewed with the configuration without a profile.
 
 **Outcome:** every finding of every round is closed, and the change merges, or the plan goes to the human for acceptance, only then. A finding is closed in one of four ways:
 - a fix that is confirmed, by the re-checker or, where `recheck` leaves it to the lead, by the lead;
@@ -45,13 +45,15 @@ A pull request's body does not reach the integration branch. The merge message d
 
 ## The panel's size
 
-`reviewers` is a number. For a pull request it may instead be a number for each class of change, such as `{ default: 2, security: 3, docs-only: 1 }`. Then the lead takes the first class that fits the diff, by its paths and its kinds of change, and writes the class and the reason in the round file. A class the configuration leaves out takes `default`'s number.
+`reviewers` is a number. For a pull request it may instead be a number for each class of change, such as `{ default: 2, security: 3, docs-only: 1 }`. Then the lead takes the first class that fits the diff, by its paths and its kinds of change, and writes the class and the reason in the round file. A class the configuration leaves out takes `default`'s number. When the item has a profile, the lead classifies every pull request this way, even when `reviewers` is one number, since a security change is reviewed without the profile.
 
 | Class | The change |
 |---|---|
 | `security` | Touches permissions, authentication, resource policies, customer data or secrets |
 | `docs-only` | Holds no code, tests or infrastructure |
 | `default` | Anything else |
+
+**A profile never weakens a security change's review.** A change of the `security` class is reviewed with `review.pull_request`, `roles.reviewer` and `roles.rechecker` read without the profile, as the configuration reference says. Its panel is the larger of two numbers: the one the configuration without the profile gives that class, and the profile's. The `security` perspective is among the panel's. With two reviewers or more, it has a reviewer that takes no other. The round file names the profile and says when this rule set aside some of it.
 
 ## Efforts
 
@@ -78,6 +80,8 @@ Each round file says which pass it is and the effort it ran at.
 3. **Check every finding before you send it:** reproduce it, or read the code that shows it. Merge findings that several reviewers raised, keeping who raised each, and set each one's severity. A finding you cannot confirm is discarded, with the reason, in the round file's discarded list. What is only a note goes in its notes.
 4. **Write the round file,** with what each reviewer cost, and point the author to it. A round that leaves only notes has nothing for the author to answer.
 5. **After the author's answer,** have each fix checked as "Which fixes are re-checked" says, and add what the re-checker cost to its file. Then decide each finding: a dispute is accepted or refused, with the reason; a refused dispute stays open. Re-check findings that are new open the next round.
+
+When the item's profile cannot be read, as the configuration reference says, run no round. The project manager fixes the plan, or asks the human.
 
 The review ends when every finding is closed and, where there is a `closing` effort, a closing pass has found nothing. Then merge, by the merge rules, or put the plan to the human. Past `max_rounds` with findings still open, put them to the human with `siesta-checkpoint`, and do not merge.
 

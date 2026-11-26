@@ -41,7 +41,7 @@ Ask in this order, skipping what is already settled:
 4. **Standing approvals:** usually none at the start. Record each one with the human's own words in `said` and today's date in `granted`.
 5. **The integration branch**, when what you found leaves it open.
 6. **Roles**, when more than one harness is available or the human wants other models or efforts for some roles. When a role moves to another harness than this session's, propose its model and effort on that harness too.
-7. **Review panels:** how many reviewers, and which perspectives, for plans and for pull requests.
+7. **Review panels:** how many reviewers, and which perspectives, for plans and for pull requests. When the human wants some epics reviewed more lightly or more strictly than others, propose profiles, as the configuration reference's "Profiles" says: each one a file `.siesta/profiles/<name>.yaml`, shown and written like the configuration, holding only the keys a profile sets.
 8. **The language for talking to the human**, when the conversation does not make it clear.
 9. **The sync add-on**, when the remote is on GitHub: whether the plan should show in GitHub's issues. With a yes, follow the setting-up steps of the `siesta-sync-github` skill.
 10. **How workers' sessions open**, when this harness has no way of its own to open a session the human can follow: a command that opens one, such as a new terminal tab running the harness's CLI, or the human starting each one. It belongs to this machine, so it goes in `.siesta/config.local.yaml`.
@@ -58,7 +58,7 @@ Then:
 
 ## 4. Check and report
 
-Read the written file against the configuration reference: `version`, known keys, values of the right kind. Then report:
+Read each written file against the configuration reference: `version`, known keys, values of the right kind, and for a profile only the keys a profile sets. Then report:
 
 - the files written or changed;
 - each setting and where it came from: the human, what you found, or the default;
