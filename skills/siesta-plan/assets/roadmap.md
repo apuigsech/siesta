@@ -24,9 +24,9 @@ Completion criteria:
 
 - [ ] <A statement anyone can check>
 
-| Epic | Kind | Depends on | Status |
-|---|---|---|---|
-| [<epic id>](<link to its spec>) — <title> | epic | — | proposed |
+| Epic | Kind | Depends on | Profile | Status |
+|---|---|---|---|---|
+| [<epic id>](<link to its spec>) — <title> | epic | — | <its profile, or `default`> | proposed |
 
 ## Not in this roadmap
 

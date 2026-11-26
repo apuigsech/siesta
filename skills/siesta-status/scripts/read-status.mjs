@@ -176,55 +176,122 @@ export function stageFromReviews(notes, pullRequest, { closingPass = false } = {
   return stage('fixing', round);
 }
 
+// What a profile may set, as the configuration reference's "Profiles" says: the item's own work and its review.
+export const PROFILE_KEYS = {
+  roles: ['worker', 'spike', 'reviewer', 'rechecker'],
+  review: ['pull_request'],
+  execution: ['before_pr', 'mutation_check'],
+};
+export const PROFILE_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const PROFILES_DIR = '.siesta/profiles';
+// What an epic's or a spike's `profile` field names: `{ name: null }` for none, `default` included, or why it names none.
+export function profileName(value) {
+  if (value == null || value === 'default') return { name: null };
+  if (typeof value !== 'string') return { error: `the profile is not a name: ${JSON.stringify(value)}` };
+  if (!PROFILE_NAME.test(value)) return { error: `invalid profile name: ${value}` };
+  return { name: value };
+}
+// What of a profile's file applies: only the keys a profile sets, and only where its value is of its default's kind.
+export function profileLayer(layer, defaults) {
+  const kept = {};
+  const ignored = [];
+  for (const [key, value] of Object.entries(layer)) {
+    if (key === 'version') continue;
+    if (!Object.hasOwn(PROFILE_KEYS, key) || !object(value)) { ignored.push(key); continue; }
+    for (const [child, item] of Object.entries(value)) {
+      if (!PROFILE_KEYS[key].includes(child) || (object(defaults[key]?.[child]) && !object(item))) { ignored.push(`${key}.${child}`); continue; }
+      (kept[key] ??= {})[child] = item;
+    }
+  }
+  return { kept, ignored };
+}
+const readLocal = path => { try { return readFileSync(path, 'utf8'); } catch { return null; } };
+
 function loadConfig(root, repo, home, env, warnings) {
   const defaults = parseYaml(readFileSync(join(here, '../../siesta/assets/defaults.yaml'), 'utf8'));
-  let config = defaults;
-  const layers = [
+  const sources = [
     [join(env.XDG_CONFIG_HOME || join(home, '.config'), 'siesta/config.yaml'), false],
     [join(root, '.siesta/config.yaml'), true],
     [join(root, '.siesta/config.local.yaml'), false],
   ];
-  function unknownKeys(value, schema, prefix = '') {
+  function unknownKeys(value, schema, prefix = '', sink = warnings) {
     for (const [key, item] of Object.entries(value)) {
       const path = prefix ? `${prefix}.${key}` : key;
-      if (!(key in schema)) warnings.push(`Unknown configuration key: ${path}`);
-      else if (key !== 'addons' && object(item) && object(schema[key]) && Object.keys(schema[key]).length) unknownKeys(item, schema[key], path);
+      if (!Object.hasOwn(schema, key)) sink.push(`Unknown configuration key: ${path}`);
+      else if (key !== 'addons' && object(item) && object(schema[key]) && Object.keys(schema[key]).length) unknownKeys(item, schema[key], path, sink);
     }
   }
-  for (const [path, repository] of layers) {
+  const checkLayer = (layer, path) => {
+    if (!object(layer)) throw new Error(`Expected a configuration map: ${path}`);
+    if ('version' in layer && layer.version !== 1) throw new Error(`Unsupported Siesta version in ${path}`);
+  };
+  const layers = [];
+  for (const [path, repository] of sources) {
     const text = read(path);
     if (text == null) {
       if (repository) throw new Error(`Siesta is not set up: ${path} is missing.`);
+      layers.push({});
       continue;
     }
     const layer = parseYaml(text);
-    if (!object(layer)) throw new Error(`Expected a configuration map: ${path}`);
-    if ('version' in layer && layer.version !== 1) throw new Error(`Unsupported Siesta version in ${path}`);
+    checkLayer(layer, path);
     if (layer.extends != null) throw new Error(`Siesta presets are not supported: ${layer.extends}`);
     unknownKeys(layer, defaults);
     if (!repository && 'autonomy' in layer) {
       warnings.push(`Ignored autonomy outside repository configuration: ${path}`);
       delete layer.autonomy;
     }
-    config = merge(config, layer);
+    layers.push(layer);
   }
+  const [machine, repository, checkout] = layers;
+  const combine = (profile = {}) => [machine, repository, profile, checkout].reduce(merge, defaults);
+  const config = combine();
   if (!['criteria', 'tasks', 'mixed'].includes(config.status?.progress)) throw new Error('Invalid status.progress');
   if (!Number.isInteger(config.execution?.max_parallel_epics) || config.execution.max_parallel_epics < 1) throw new Error('Invalid execution.max_parallel_epics');
+  // Profiles are read from the integration commit, as the reference says, and each once. One that cannot be read gives
+  // an error, which its items report: never a silent fallback, and never a stop of the whole status.
+  function profileLoader(commit) {
+    const blob = path => tryGit(root, 'cat-file', 'blob', `${commit}:${path}`);
+    if (blob(`${PROFILES_DIR}/default.yaml`) != null) warnings.push(`Ignored ${PROFILES_DIR}/default.yaml: default names the configuration without a profile.`);
+    const profiles = new Map();
+    return name => {
+      if (profiles.has(name)) return profiles.get(name);
+      const path = `${PROFILES_DIR}/${name}.yaml`;
+      const result = (() => {
+        try {
+          const text = blob(path);
+          if (text == null) return { error: `no file ${path} on the integration branch` };
+          const layer = parseYaml(text);
+          checkLayer(layer, path);
+          const { kept, ignored } = profileLayer(layer, defaults);
+          const unknown = [];
+          unknownKeys(kept, defaults, '', unknown);
+          const notes = [...ignored.map(key => `Ignored profile key: ${name}: ${key}`), ...unknown.map(note => `${note} (profile ${name})`)];
+          if (readLocal(join(root, path))?.trimEnd() !== text) notes.push(`Profile differs in this checkout from the integration branch: ${name}`);
+          return { config: combine(kept), notes };
+        } catch (error) { return { error: `${path}: ${error.message}` }; }
+      })();
+      profiles.set(name, result);
+      warnings.push(...result.notes ?? []);
+      return result;
+    };
+  }
   const expand = (path, base = root) => {
     if (typeof path !== 'string' || !path) throw new Error('Expected a configured path');
     const value = path.replaceAll('{repo}', repo).replace(/^~(?=\/|$)/, home);
     if (/[{}]/.test(value)) throw new Error(`Unresolved path: ${path}`);
     return resolve(base, value);
   };
-  return { config, expand };
+  return { config, expand, profileLoader };
 }
+const hasClosingPass = config => object(config.roles?.reviewer?.effort) && config.roles.reviewer.effort.closing != null;
 
 export function readStatus({ root = process.cwd(), home = homedir(), env = process.env, now = new Date() } = {}) {
   root = git(resolve(root), 'rev-parse', '--show-toplevel');
   const warnings = [];
   const origin = tryGit(root, 'remote', 'get-url', 'origin');
   const repo = origin?.replace(/\.git$/, '').match(/[:/]([^/:]+\/[^/]+)$/)?.[1] ?? basename(root);
-  const { config, expand } = loadConfig(root, repo, home, env, warnings);
+  const { config, expand, profileLoader } = loadConfig(root, repo, home, env, warnings);
   let integration = config.git?.integration_branch;
   if (!integration) integration = tryGit(root, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD')?.replace(/^origin\//, '');
   if (!integration) throw new Error('Set git.integration_branch, or establish origin/HEAD before opening the panel.');
@@ -234,6 +301,7 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
   const ref = tryGit(root, 'rev-parse', '--verify', `${remoteRef}^{commit}`) ? remoteRef : localRef;
   const commit = git(root, 'rev-parse', '--verify', `${ref}^{commit}`);
   if (ref === localRef) warnings.push(`No origin/${integration}; counting the local integration branch.`);
+  const loadProfile = profileLoader(commit);
   const show = (at, path) => tryGit(root, 'show', `${at}:${path}`);
   const trackedPath = path => {
     const rel = relative(root, expand(path));
@@ -274,7 +342,6 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
     pmSources.push({ path, modifiedAt: modified(path) });
     for (const worker of parseWorkers(text)) assignments.set(worker.id, worker);
   }
-  const closingPass = object(config.roles?.reviewer?.effort) && config.roles.reviewer.effort.closing != null;
   const branches = git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes/origin').split('\n');
   const branchNames = new Set(branches.map(branch => branch.replace(/^refs\/(heads|remotes\/origin)\//, '')));
   const epics = files.filter(path => path.startsWith(`${epicsPath}/`) && path.endsWith('/spec.md')).map(path => {
@@ -313,10 +380,18 @@ export function readStatus({ root = process.cwd(), home = homedir(), env = proce
     if (branchMeta.id !== meta.id) throw new Error(`Worker epic identity differs: ${path}`);
     const active = !closed.has(meta.status) && (Boolean(worker) || meta.status === 'active' || ['active', 'completed'].includes(branchMeta.status));
     if (meta.status === 'blocked') warnings.push(`Legacy blocked status; recover its lifecycle: ${meta.id}`);
+    // The profile is the one the spec names on the integration branch, from the file there; a branch never changes it.
+    const named = profileName(meta.profile);
+    const profile = named.name ?? (typeof meta.profile === 'string' && meta.profile !== 'default' ? meta.profile : null);
+    const loaded = closed.has(meta.status) ? null : named.error ? named : named.name ? loadProfile(named.name) : null;
+    if (loaded?.error) warnings.push(`Profile cannot be read: ${meta.id}: ${loaded.error}`);
+    if (branchText != null && JSON.stringify(branchMeta.profile ?? null) !== JSON.stringify(meta.profile ?? null)) warnings.push(`Profile differs on the worker's branch: ${meta.id}`);
+    // Without its profile, an epic's closing pass is unknown: take the stricter reading, so that it never shows ready.
+    const closingPass = loaded?.error ? true : hasClosingPass(loaded?.config ?? config);
     const delivery = [...new Set([...list(branchMeta.delivery?.urls), ...(branchMeta.delivery?.url ? [branchMeta.delivery.url] : []),
       ...list(meta.delivery?.urls), ...(meta.delivery?.url ? [meta.delivery.url] : []), ...(worker?.pullRequest ? [worker.pullRequest] : [])])].filter(url => /^https?:\/\//.test(url));
     return {
-      id: meta.id, title: meta.title || meta.id, roadmap: meta.roadmap, phase: meta.phase, path,
+      id: meta.id, title: meta.title || meta.id, roadmap: meta.roadmap, phase: meta.phase, path, profile, profileError: loaded?.error ?? null,
       status: meta.status, statusOnBranch: branchText == null ? null : branchMeta.status,
       blocked: Object.hasOwn(branchMeta, 'blocked') ? branchMeta.blocked : meta.blocked ?? null,
       dependsOn: list(meta.depends_on), waitsFor: list(meta.waits_for), active,

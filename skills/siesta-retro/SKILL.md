@@ -39,9 +39,11 @@ The round files and the re-check files record what each reviewer and re-checker 
 - the findings that only a later or a stronger pass found: a later round, the closing pass or a re-check;
 - the tokens for each finding. Where the harness reports no tokens, use the tool calls, and say so.
 
+When the roadmap's epics used more than one profile, give the same counts for each profile too, from the profile each round file names, and the faults found after the merge of each profile's pull requests.
+
 Put the counts in the retro's file. Leave out a figure a file gives as `not reported`, say how many were left out, and never estimate one.
 
-The counts feed proposals like any other pattern: a lower effort for the rounds when the stronger passes found nothing they had missed, a higher one when they kept finding what the rounds missed, a smaller panel for a class of change whose extra reviewers found nothing.
+The counts feed proposals like any other pattern: a lower effort for the rounds when the stronger passes found nothing they had missed, a higher one when they kept finding what the rounds missed, a smaller panel for a class of change whose extra reviewers found nothing, a profile that should change, or an epic whose profile did not suit its work.
 
 ## What becomes a proposal
 

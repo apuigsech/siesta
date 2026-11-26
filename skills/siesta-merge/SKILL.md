@@ -6,7 +6,7 @@ argument-hint: "[pull request number]"
 
 # Siesta merge
 
-**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration (`git`, `autonomy`, `execution.after_merge`) and its moments. `siesta-review` says when a review is closed, and `siesta-checkpoint` holds what waits for the human.
+**REQUIRED BACKGROUND:** the `siesta` skill, for the effective configuration (`git`, `autonomy`, `execution.after_merge`) and its moments. The pull request of an epic or a spike reads its review's settings, `recheck` among them, with the item's profile, as its review did; a security change, without it, as `siesta-review` says. `siesta-review` says when a review is closed, and `siesta-checkpoint` holds what waits for the human.
 
 **Outcome:** the pull request is merged at exactly the head that was reviewed and passed its checks, and nothing in it that waited for the human merged without their yes. Afterwards, the add-ons, the epic, its worktree and the project manager's log all show the merge.
 
